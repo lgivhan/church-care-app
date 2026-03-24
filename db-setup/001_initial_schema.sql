@@ -1,0 +1,256 @@
+-- ============================================================
+-- Church Care Contact App — Initial Schema
+-- Run this in Supabase SQL Editor in one pass.
+-- ============================================================
+
+
+-- ============================================================
+-- SECTION 1: PROFILES
+-- Mirrors auth.users. Auto-populated by trigger on signup.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name     TEXT NOT NULL DEFAULT '',
+  email         TEXT NOT NULL DEFAULT '',
+  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer')),
+  is_active     BOOLEAN NOT NULL DEFAULT false,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Trigger function: fires after a new auth.users row is inserted.
+-- Copies id, email, and full_name (from signup metadata) into profiles.
+-- SECURITY DEFINER allows it to write to profiles regardless of RLS.
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role, is_active)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    'volunteer',
+    false
+  );
+  RETURN NEW;
+END;
+$$;
+
+-- Drop trigger if it exists so this script is safely re-runnable.
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user();
+
+
+-- ============================================================
+-- SECTION 2: MEMBERS
+-- Mirrored from Planning Center. Primary key is the PCO id (text).
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS members (
+  id              TEXT PRIMARY KEY,         -- Planning Center person ID
+  first_name      TEXT NOT NULL DEFAULT '',
+  last_name       TEXT NOT NULL DEFAULT '',
+  email           TEXT,
+  phone           TEXT,
+  birthday        DATE,                     -- nullable; sourced from PCO if available
+  last_contacted  TIMESTAMPTZ,              -- updated when a contact_log is inserted
+  last_synced     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+-- ============================================================
+-- SECTION 3: ASSIGNMENTS
+-- One row per volunteer-member pairing per week.
+-- week_starting is always the Sunday that begins the week.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS assignments (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  caller_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  member_id     TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed')),
+  week_starting DATE NOT NULL,
+  completed_at  TIMESTAMPTZ,
+
+  -- Prevent the same member from being assigned twice in one week.
+  UNIQUE (member_id, week_starting)
+);
+
+-- Index for the most common volunteer dashboard query.
+CREATE INDEX IF NOT EXISTS idx_assignments_caller_week
+  ON assignments (caller_id, week_starting);
+
+-- Index for admin week-based lookups.
+CREATE INDEX IF NOT EXISTS idx_assignments_week
+  ON assignments (week_starting);
+
+
+-- ============================================================
+-- SECTION 4: CONTACT LOGS
+-- Permanent history of every contact attempt.
+-- Volunteers insert; no one deletes.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS contact_logs (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id       TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  volunteer_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  assignment_id   UUID REFERENCES assignments(id) ON DELETE SET NULL,
+  notes           TEXT,
+  contacted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  needs_follow_up BOOLEAN NOT NULL DEFAULT false
+);
+
+-- Index for admin follow-up queries.
+CREATE INDEX IF NOT EXISTS idx_contact_logs_follow_up
+  ON contact_logs (needs_follow_up)
+  WHERE needs_follow_up = true;
+
+-- Index for member contact history.
+CREATE INDEX IF NOT EXISTS idx_contact_logs_member
+  ON contact_logs (member_id);
+
+
+-- ============================================================
+-- SECTION 5: GENERATE WEEKLY ASSIGNMENTS FUNCTION
+--
+-- Called by the generateWeeklyAssignments Edge Function.
+-- Logic:
+--   1. Determine this week's Sunday (week_starting).
+--   2. Bail out early if assignments already exist for this week.
+--   3. Get all active volunteers.
+--   4. Get all members NOT already assigned this week,
+--      ordered by last_contacted ASC NULLS FIRST (longest-waiting first).
+--   5. Use row_number() to distribute members round-robin across
+--      volunteers, capped at 5 per volunteer.
+--   6. Insert the resulting assignments.
+--
+-- This approach uses a single ranked query to prevent duplicates.
+-- We do NOT loop with LIMIT 5 per volunteer, which would cause
+-- overlapping member selections.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION generate_weekly_assignments()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_week_starting  DATE;
+  v_volunteer_count INT;
+BEGIN
+
+  -- Calculate the most recent Sunday.
+  -- date_trunc('week', ...) returns Monday in PostgreSQL (ISO week).
+  -- Adding 1 day before truncating, then subtracting 1 day after,
+  -- shifts the anchor back to Sunday.
+  v_week_starting := (date_trunc('week', CURRENT_DATE + INTERVAL '1 day') - INTERVAL '1 day')::DATE;
+
+  -- Count active volunteers available for assignment.
+  SELECT COUNT(*) INTO v_volunteer_count
+  FROM profiles
+  WHERE role = 'volunteer' AND is_active = true;
+
+  -- Nothing to do if there are no active volunteers.
+  IF v_volunteer_count = 0 THEN
+    RAISE NOTICE 'No active volunteers found. Skipping assignment generation.';
+    RETURN;
+  END IF;
+
+  -- Bail out if assignments have already been generated for this week.
+  -- This makes the function safely idempotent (safe to call more than once).
+  IF EXISTS (
+    SELECT 1 FROM assignments WHERE week_starting = v_week_starting LIMIT 1
+  ) THEN
+    RAISE NOTICE 'Assignments already exist for week starting %. Skipping.', v_week_starting;
+    RETURN;
+  END IF;
+
+  -- Insert assignments using a window function to distribute members
+  -- round-robin across volunteers, up to 5 members each.
+  --
+  -- How the distribution works:
+  --   - Eligible members are ranked by last_contacted ASC NULLS FIRST.
+  --   - row_number() assigns each member a sequential position (1, 2, 3...).
+  --   - Volunteers are also assigned a sequential position (1, 2, 3...).
+  --   - A member goes to volunteer: ((member_rank - 1) % volunteer_count) + 1
+  --     This spreads members evenly: member 1 → vol 1, member 2 → vol 2, etc.
+  --   - We only keep assignments where the member's slot for that volunteer
+  --     is <= 5 (i.e., each volunteer gets at most 5 members).
+
+  INSERT INTO assignments (caller_id, member_id, status, week_starting)
+  SELECT
+    v.id        AS caller_id,
+    m.member_id AS member_id,
+    'pending'   AS status,
+    v_week_starting
+  FROM (
+    -- Rank eligible members by how long since last contact.
+    SELECT
+      id AS member_id,
+      row_number() OVER (ORDER BY last_contacted ASC NULLS FIRST) AS member_rank
+    FROM members
+    WHERE id NOT IN (
+      -- Exclude members already assigned this week (safety net).
+      SELECT member_id FROM assignments WHERE week_starting = v_week_starting
+    )
+  ) m
+  JOIN (
+    -- Assign each active volunteer a sequential index.
+    SELECT
+      id,
+      row_number() OVER (ORDER BY created_at ASC) AS vol_index
+    FROM profiles
+    WHERE role = 'volunteer' AND is_active = true
+  ) v
+    -- Round-robin: which volunteer slot does this member fall into?
+    ON ((m.member_rank - 1) % v_volunteer_count) + 1 = v.vol_index
+  WHERE
+    -- Each volunteer receives at most 5 members.
+    -- Slot number within this volunteer's batch:
+    --   ceil(member_rank / volunteer_count) gives the "round" (1st, 2nd... 5th member for this vol)
+    CEIL(m.member_rank::FLOAT / v_volunteer_count) <= 5;
+
+  RAISE NOTICE 'Weekly assignments generated for week starting %.', v_week_starting;
+END;
+$$;
+
+
+-- ============================================================
+-- SECTION 6: AUTO-UPDATE last_contacted ON MEMBERS
+--
+-- When a contact_log row is inserted, update the member's
+-- last_contacted timestamp so the assignment rotation stays accurate.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION update_member_last_contacted()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE members
+  SET last_contacted = NEW.contacted_at
+  WHERE id = NEW.member_id
+    -- Only update if this contact is more recent than the last recorded one.
+    AND (last_contacted IS NULL OR NEW.contacted_at > last_contacted);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_contact_log_inserted ON contact_logs;
+
+CREATE TRIGGER on_contact_log_inserted
+  AFTER INSERT ON contact_logs
+  FOR EACH ROW
+  EXECUTE FUNCTION update_member_last_contacted();
