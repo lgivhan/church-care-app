@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -94,6 +95,12 @@ export default function LoginPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please try again.");
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -140,11 +147,16 @@ export default function LoginPage() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            Account created!
+            Check your email
           </h2>
+          <p className="text-gray-500 text-sm leading-relaxed mb-3">
+            We sent a confirmation link to{" "}
+            <span className="font-medium text-gray-700">{email}</span>. Please
+            click it to verify your email address.
+          </p>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            Your account is pending approval by a church administrator. You'll
-            be able to log in once your account has been activated.
+            After confirming your email, a church administrator will need to
+            approve your account before you can log in.
           </p>
           <button
             onClick={() => {
@@ -152,6 +164,7 @@ export default function LoginPage() {
               setMode("login");
               setEmail("");
               setPassword("");
+              setConfirmPassword("");
               setFullName("");
             }}
             className="text-sm text-blue-600 hover:text-blue-700 underline"
@@ -257,6 +270,24 @@ export default function LoginPage() {
               />
             </div>
 
+            {/* Confirm password — signup only */}
+            {mode === "signup" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="Re-enter your password"
+                  minLength={6}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
+
             {/* Submit button */}
             <button
               type="submit"
@@ -282,6 +313,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setMode("signup");
                     setError("");
+                    setConfirmPassword("");
                   }}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >

@@ -122,7 +122,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
           <button
             onClick={async () => {
               await supabase.auth.signOut();
-              window.location.href = "/login";
+              window.location.replace("/login");
             }}
             className="text-sm text-gray-400 hover:text-gray-600 underline"
           >
