@@ -57,23 +57,8 @@ Deno.serve(async (req: Request) => {
     // 4. Return a count of assignments created this week
     //    so the caller can confirm it worked.
     // --------------------------------------------------------
-    const weekStarting = getThisSunday();
-
-    const { count, error: countError } = await supabase
-      .from("assignments")
-      .select("*", { count: "exact", head: true })
-      .eq("week_starting", weekStarting);
-
-    if (countError) {
-      // Non-fatal — assignments were still generated, we just
-      // couldn't count them for the response.
-      console.warn("Could not count assignments:", countError.message);
-    }
-
     const summary = {
       success: true,
-      week_starting: weekStarting,
-      assignments_created: count ?? "unknown",
       generated_at: new Date().toISOString(),
     };
 
@@ -93,25 +78,3 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-/**
- * Returns this week's Sunday as a YYYY-MM-DD string.
- * Matches the same logic used in the SQL function:
- *   date_trunc('week', CURRENT_DATE + INTERVAL '1 day') - INTERVAL '1 day'
- *
- * JavaScript's getDay() returns 0 for Sunday, so we subtract
- * the current day index to roll back to Sunday.
- */
-function getThisSunday(): string {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - dayOfWeek);
-
-  // Format as YYYY-MM-DD to match PostgreSQL DATE type
-  return sunday.toISOString().split("T")[0];
-}
