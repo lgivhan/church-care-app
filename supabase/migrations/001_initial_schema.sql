@@ -199,10 +199,13 @@ BEGIN
       id AS member_id,
       row_number() OVER (ORDER BY last_contacted ASC NULLS FIRST) AS member_rank
     FROM members
-    WHERE id NOT IN (
-      -- Exclude members already assigned this week (safety net).
-      SELECT member_id FROM assignments WHERE week_starting = v_week_starting
-    )
+    WHERE
+      -- Exclude members with no way to be contacted
+      (email IS NOT NULL OR phone IS NOT NULL)
+      AND id NOT IN (
+        -- Exclude members already assigned this week (safety net).
+        SELECT member_id FROM assignments WHERE week_starting = v_week_starting
+      )
   ) m
   JOIN (
     -- Assign each active volunteer a sequential index.
