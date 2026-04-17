@@ -106,7 +106,7 @@
 - [ ] Update `syncMembersDaily` to fetch PCO list memberships
 - [ ] Update `generate_weekly_assignments()` to exclude children
 - [ ] Show member type badge on volunteer dashboard contact cards
-- [ ] Add member type filter to admin Members tab
+- [x] Generate contacts for volunteers when they are activated
 
 **Blocked on:** Confirming exact list names in Planning Center account
 
@@ -139,6 +139,8 @@
 
 - [ ] Sign out button intermittently not working (investigate session state)
 - [ ] Confirm Planning Center list names before building tag sync
+- [ ] On volunteer page, make people who are contacted go to bottom of list instead of staying at top
+- [ ] In admin page, stop showing PC id
 
 ## Key Decisions Made
 

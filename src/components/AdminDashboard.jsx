@@ -1,4 +1,4 @@
-i; // ============================================================
+// ============================================================
 // AdminDashboard.jsx
 //
 // Full admin view with tabbed navigation. Tabs:
@@ -259,7 +259,40 @@ export default function AdminDashboard() {
       .from("profiles")
       .update({ is_active: true })
       .eq("id", id);
-    if (!error) loadPendingVolunteers();
+
+    if (error) {
+      alert("Failed to approve volunteer. Please try again.");
+      return;
+    }
+
+    console.log("Volunteer approved, attempting to generate assignments...");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      console.log("Session token exists:", !!session?.access_token);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      console.log("Edge function response status:", response.status);
+      const result = await response.json();
+      console.log("Edge function result:", result);
+    } catch (err) {
+      console.warn("Could not auto-generate assignments:", err);
+    }
+
+    loadPendingVolunteers();
+    loadVolunteers();
   }
 
   async function deactivateVolunteer(id) {
