@@ -106,6 +106,7 @@
 - [ ] Update `syncMembersDaily` to fetch PCO list memberships
 - [ ] Update `generate_weekly_assignments()` to exclude children
 - [ ] Show member type badge on volunteer dashboard contact cards
+- [ ] Add filter for admin based on member type
 - [x] Generate contacts for volunteers when they are activated
 
 **Blocked on:** Confirming exact list names in Planning Center account
