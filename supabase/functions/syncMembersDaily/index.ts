@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------
     const allPeople: PCOPerson[] = [];
     let nextUrl: string | null =
-      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&include=field_data&fields[Person]=first_name,last_name,emails,phone_numbers,birthdate`;
+      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership`;
 
     let pageCount = 0;
 
@@ -132,12 +132,10 @@ Deno.serve(async (req: Request) => {
         id: personId,
         first_name: attrs.first_name ?? "",
         last_name: attrs.last_name ?? "",
-        // Use primary email if available
         email: emailMap[personId] ?? null,
-        // Use primary phone if available
         phone: phoneMap[personId] ?? null,
-        // birthdate comes from PCO as "YYYY-MM-DD" or null
         birthday: attrs.birthdate ?? null,
+        membership_type: attrs.membership ?? null,
         last_synced: new Date().toISOString(),
       };
     });
@@ -198,6 +196,7 @@ interface PCOPerson {
     first_name?: string;
     last_name?: string;
     birthdate?: string | null;
+    membership?: string | null;
   };
 }
 
