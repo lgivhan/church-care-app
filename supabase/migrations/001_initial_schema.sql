@@ -9,13 +9,16 @@
 -- Mirrors auth.users. Auto-populated by trigger on signup.
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS profiles (
-  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name     TEXT NOT NULL DEFAULT '',
-  email         TEXT NOT NULL DEFAULT '',
-  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer')),
-  is_active     BOOLEAN NOT NULL DEFAULT false,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS members (
+  id              TEXT PRIMARY KEY,
+  first_name      TEXT NOT NULL DEFAULT '',
+  last_name       TEXT NOT NULL DEFAULT '',
+  email           TEXT,
+  phone           TEXT,
+  birthday        DATE,
+  membership_type TEXT,
+  last_contacted  TIMESTAMPTZ,
+  last_synced     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Trigger function: fires after a new auth.users row is inserted.
@@ -145,48 +148,27 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_week_starting  DATE;
+  v_week_starting DATE;
   v_volunteer_count INT;
 BEGIN
-
-  -- Calculate the most recent Sunday.
-  -- date_trunc('week', ...) returns Monday in PostgreSQL (ISO week).
-  -- Adding 1 day before truncating, then subtracting 1 day after,
-  -- shifts the anchor back to Sunday.
   v_week_starting := (date_trunc('week', CURRENT_DATE + INTERVAL '1 day') - INTERVAL '1 day')::DATE;
-
-  -- Count active volunteers available for assignment.
+ 
+  -- Count active volunteers who don't yet have assignments this week
   SELECT COUNT(*) INTO v_volunteer_count
   FROM profiles
-  WHERE role = 'volunteer' AND is_active = true;
-
-  -- Nothing to do if there are no active volunteers.
+  WHERE role = 'volunteer' 
+    AND is_active = true
+    AND id NOT IN (
+      SELECT DISTINCT caller_id 
+      FROM assignments 
+      WHERE week_starting = v_week_starting
+    );
+ 
   IF v_volunteer_count = 0 THEN
-    RAISE NOTICE 'No active volunteers found. Skipping assignment generation.';
+    RAISE NOTICE 'All active volunteers already have assignments for week starting %. Skipping.', v_week_starting;
     RETURN;
   END IF;
-
-  -- Bail out if assignments have already been generated for this week.
-  -- This makes the function safely idempotent (safe to call more than once).
-  IF EXISTS (
-    SELECT 1 FROM assignments WHERE week_starting = v_week_starting LIMIT 1
-  ) THEN
-    RAISE NOTICE 'Assignments already exist for week starting %. Skipping.', v_week_starting;
-    RETURN;
-  END IF;
-
-  -- Insert assignments using a window function to distribute members
-  -- round-robin across volunteers, up to 5 members each.
-  --
-  -- How the distribution works:
-  --   - Eligible members are ranked by last_contacted ASC NULLS FIRST.
-  --   - row_number() assigns each member a sequential position (1, 2, 3...).
-  --   - Volunteers are also assigned a sequential position (1, 2, 3...).
-  --   - A member goes to volunteer: ((member_rank - 1) % volunteer_count) + 1
-  --     This spreads members evenly: member 1 → vol 1, member 2 → vol 2, etc.
-  --   - We only keep assignments where the member's slot for that volunteer
-  --     is <= 5 (i.e., each volunteer gets at most 5 members).
-
+ 
   INSERT INTO assignments (caller_id, member_id, status, week_starting)
   SELECT
     v.id        AS caller_id,
@@ -194,39 +176,54 @@ BEGIN
     'pending'   AS status,
     v_week_starting
   FROM (
-    -- Rank eligible members by how long since last contact.
     SELECT
       id AS member_id,
       row_number() OVER (ORDER BY last_contacted ASC NULLS FIRST) AS member_rank
     FROM members
     WHERE
-      -- Exclude members with no way to be contacted
+      -- Must have at least one way to be contacted
       (email IS NOT NULL OR phone IS NOT NULL)
+      -- Exclude children and teens based on membership type.
+      -- We check for 'Child' and 'Teen' case-insensitively to catch
+      -- all PCO membership type variations e.g:
+      --   'Child of Member - Regular Attendee'
+      --   'Child Non Member Adventurer'
+      --   'Child/Teen Non Member Attends'
+      AND (
+        membership_type IS NULL
+        OR (
+          membership_type NOT ILIKE '%child%'
+          AND membership_type NOT ILIKE '%teen%'
+        )
+      )
+      -- Exclude members already assigned this week
       AND id NOT IN (
-        -- Exclude members already assigned this week (safety net).
-        SELECT member_id FROM assignments WHERE week_starting = v_week_starting
+        SELECT member_id 
+        FROM assignments 
+        WHERE week_starting = v_week_starting
       )
   ) m
   JOIN (
-    -- Assign each active volunteer a sequential index.
+    -- Only assign to volunteers without assignments this week
     SELECT
       id,
       row_number() OVER (ORDER BY created_at ASC) AS vol_index
     FROM profiles
-    WHERE role = 'volunteer' AND is_active = true
+    WHERE role = 'volunteer' 
+      AND is_active = true
+      AND id NOT IN (
+        SELECT DISTINCT caller_id 
+        FROM assignments 
+        WHERE week_starting = v_week_starting
+      )
   ) v
-    -- Round-robin: which volunteer slot does this member fall into?
     ON ((m.member_rank - 1) % v_volunteer_count) + 1 = v.vol_index
   WHERE
-    -- Each volunteer receives at most 5 members.
-    -- Slot number within this volunteer's batch:
-    --   ceil(member_rank / volunteer_count) gives the "round" (1st, 2nd... 5th member for this vol)
     CEIL(m.member_rank::FLOAT / v_volunteer_count) <= 5;
-
+ 
   RAISE NOTICE 'Weekly assignments generated for week starting %.', v_week_starting;
 END;
 $$;
-
 
 -- ============================================================
 -- SECTION 6: AUTO-UPDATE last_contacted ON MEMBERS
