@@ -73,7 +73,8 @@ export default function VolunteerDashboard() {
             last_name,
             email,
             phone,
-            birthday
+            birthday,
+            membership_type
           )
         `,
         )

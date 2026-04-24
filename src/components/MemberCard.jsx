@@ -10,6 +10,61 @@
 //   onEdit      — callback to reopen modal with existing notes
 // ============================================================
 
+// ============================================================
+// Maps verbose PCO membership types to simplified display labels
+// and badge colors for the volunteer contact card.
+//
+// Any type containing 'child' or 'teen' should never appear
+// here since they're excluded from assignments — but we handle
+// them defensively just in case.
+// ============================================================
+function getMembershipLabel(membershipType) {
+  if (!membershipType) return null;
+
+  const t = membershipType.toLowerCase();
+
+  if (t.includes("child") || t.includes("teen")) {
+    return { label: "Child/Teen", color: "bg-gray-100 text-gray-500" };
+  }
+  if (t.includes("regular attends") || t.includes("regular attendee")) {
+    return { label: "Active Member", color: "bg-green-100 text-green-700" };
+  }
+  if (
+    t.includes("attends occasionally") ||
+    t.includes("non-member attends") ||
+    t.includes("non member attends")
+  ) {
+    return { label: "Occasional Attender", color: "bg-blue-100 text-blue-700" };
+  }
+  if (t.includes("visited") || t.includes("has visited")) {
+    return { label: "Visitor", color: "bg-purple-100 text-purple-700" };
+  }
+  if (t.includes("moved away") || t.includes("moved and changed")) {
+    return { label: "Moved Away", color: "bg-orange-100 text-orange-700" };
+  }
+  if (t.includes("doesn't attend") || t.includes("does not attend")) {
+    return { label: "Inactive", color: "bg-red-100 text-red-700" };
+  }
+  if (t.includes("online")) {
+    return { label: "Online Member", color: "bg-cyan-100 text-cyan-700" };
+  }
+  if (t.includes("in progress")) {
+    return { label: "In Progress", color: "bg-yellow-100 text-yellow-700" };
+  }
+  if (t.includes("guest speaker")) {
+    return { label: "Guest Speaker", color: "bg-gray-100 text-gray-600" };
+  }
+  if (t.includes("used to attend")) {
+    return { label: "Former Attender", color: "bg-orange-100 text-orange-700" };
+  }
+  if (t.includes("interest")) {
+    return { label: "Interest", color: "bg-green-100 text-green-700" };
+  }
+
+  // Fallback — show a shortened version of whatever PCO has
+  return { label: membershipType, color: "bg-gray-100 text-gray-600" };
+}
+
 export default function MemberCard({ assignment, onComplete, onEdit }) {
   const member = assignment.members;
   const isCompleted = assignment.status === "completed";
@@ -24,6 +79,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
   }
 
   const birthday = formatBirthday(member?.birthday);
+  const membershipLabel = getMembershipLabel(member?.membership_type);
 
   return (
     <div
@@ -31,20 +87,25 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         isCompleted ? "border-green-200 bg-green-50" : "border-gray-100"
       }`}
     >
-      {/* Header */}
+      {/* Member name + completion badge */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-gray-800 text-base">
             {member?.first_name} {member?.last_name}
           </h3>
-
-          {birthday && (
-            <p className="text-xs text-blue-500 mt-0.5">
-              🎂 Birthday: {birthday}
-            </p>
-          )}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {/* Membership type badge — only shown if available */}
+            {membershipLabel && (
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${membershipLabel.color}`}
+              >
+                {membershipLabel.label}
+              </span>
+            )}
+            {/* Birthday — only shown if available */}
+            {birthday && <p className="text-xs text-blue-500">🎂 {birthday}</p>}
+          </div>
         </div>
-
         {isCompleted && (
           <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
             <svg

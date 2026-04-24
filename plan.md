@@ -102,10 +102,10 @@
 
 **Planned changes:**
 
-- [ ] Add `member_type TEXT` column to `members` table
-- [ ] Update `syncMembersDaily` to fetch PCO list memberships
-- [ ] Update `generate_weekly_assignments()` to exclude children
-- [ ] Show member type badge on volunteer dashboard contact cards
+- [x] Add `member_type TEXT` column to `members` table
+- [x] Update `syncMembersDaily` to fetch PCO list memberships
+- [x] Update `generate_weekly_assignments()` to exclude children
+- [x] Show member type badge on volunteer dashboard contact cards
 - [ ] Add filter for admin based on member type
 - [x] Generate contacts for volunteers when they are activated
 
