@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { getThisSunday } from "../lib/dateUtils";
+import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 

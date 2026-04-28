@@ -15,7 +15,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { getThisSunday } from "../lib/dateUtils";
+import { getThisSunday } from "../lib/utils";
 
 // ============================================================
 // HELPERS
@@ -265,13 +265,10 @@ export default function AdminDashboard() {
       return;
     }
 
-    console.log("Volunteer approved, attempting to generate assignments...");
-
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      console.log("Session token exists:", !!session?.access_token);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
@@ -284,9 +281,7 @@ export default function AdminDashboard() {
         },
       );
 
-      console.log("Edge function response status:", response.status);
       const result = await response.json();
-      console.log("Edge function result:", result);
     } catch (err) {
       console.warn("Could not auto-generate assignments:", err);
     }

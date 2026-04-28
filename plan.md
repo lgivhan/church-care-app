@@ -107,9 +107,9 @@
 - [x] Update `generate_weekly_assignments()` to exclude children
 - [x] Show member type badge on volunteer dashboard contact cards
 - [ ] Add filter for admin based on member type
+- [x] Make dateUtils more general and add imports for membershipType + update pre-existing import paths
 - [x] Generate contacts for volunteers when they are activated
-
-**Blocked on:** Confirming exact list names in Planning Center account
+- [x] Confirming exact list names in Planning Center account
 
 ---
 
