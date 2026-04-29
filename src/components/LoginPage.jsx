@@ -16,7 +16,7 @@
 //   - Shows a confirmation message after successful signup
 // ============================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
@@ -37,8 +37,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+
+  useEffect(() => {
+    // When Supabase redirects back after a password reset email click,
+    // it appends #access_token and type=recovery to the URL.
+    // We detect this and show the new password form.
+    const hash = window.location.hash;
+    if (hash && hash.includes("type=recovery")) {
+      setIsResettingPassword(true);
+    }
+  }, []);
 
   // --------------------------------------------------------
   // Handle login form submission
@@ -107,6 +118,33 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  async function handleSetNewPassword(e) {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      // Password updated — sign them out and back to login
+      await supabase.auth.signOut();
+      setIsResettingPassword(false);
+      setNewPassword("");
+      setError("");
+      // Show a success message by reusing resetSent state
+      setPasswordUpdated(true);
+    }
+    setLoading(false);
+  }
+
   // --------------------------------------------------------
   // Handle signup form submission
   // --------------------------------------------------------
@@ -148,6 +186,71 @@ export default function LoginPage() {
     // Show success message — account needs admin approval before login
     setSignupSuccess(true);
     setLoading(false);
+  }
+
+  if (isResettingPassword) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Set New Password
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Enter your new password below
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSetNewPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  placeholder="At least 6 characters"
+                  minLength={6}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+              >
+                {loading ? "Saving..." : "Set New Password"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // --------------------------------------------------------
@@ -319,6 +422,14 @@ export default function LoginPage() {
                 <p className="text-green-700 text-sm">
                   Password reset email sent! Check your inbox and follow the
                   link to reset your password.
+                </p>
+              </div>
+            )}
+
+            {mode === "login" && passwordUpdated && (
+              <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
+                <p className="text-green-700 text-sm">
+                  Password updated! You can now sign in with your new password.
                 </p>
               </div>
             )}
