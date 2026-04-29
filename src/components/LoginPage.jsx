@@ -36,6 +36,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   // --------------------------------------------------------
   // Handle login form submission
@@ -78,6 +81,29 @@ export default function LoginPage() {
       navigate("/dashboard");
     }
 
+    setLoading(false);
+  }
+
+  async function handlePasswordReset(e) {
+    e.preventDefault();
+    if (!email) {
+      setError(
+        "Please enter your email address first, then click Forgot Password.",
+      );
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setResetSent(true);
+    }
     setLoading(false);
   }
 
@@ -285,6 +311,27 @@ export default function LoginPage() {
                   minLength={6}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+            )}
+
+            {mode === "login" && resetSent && (
+              <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
+                <p className="text-green-700 text-sm">
+                  Password reset email sent! Check your inbox and follow the
+                  link to reset your password.
+                </p>
+              </div>
+            )}
+
+            {mode === "login" && !resetSent && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  Forgot your password?
+                </button>
               </div>
             )}
 
