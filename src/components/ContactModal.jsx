@@ -117,8 +117,8 @@ export default function ContactModal({
       }
 
       clearTimeout(timeout);
-      onSaved();
       onClose();
+      onSaved();
     } catch (err) {
       clearTimeout(timeout);
       setError(err.message ?? "Something went wrong. Please try again.");
