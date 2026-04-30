@@ -48,7 +48,7 @@ export default function VolunteerDashboard() {
       // and the JWT has expired without the auto-refresh catching it.
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.refreshSession();
       if (!session) {
         window.location.replace("/login");
         return;

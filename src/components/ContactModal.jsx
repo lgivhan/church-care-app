@@ -52,28 +52,29 @@ export default function ContactModal({
       return;
     }
 
-    // Safety timeout — if the operation takes more than 10 seconds,
-    // something has gone wrong. Reset the UI so the user can try again.
     const timeout = setTimeout(() => {
       setLoading(false);
       setError(
         "The request is taking too long. Please check your connection, refresh the page and try again.",
       );
-    }, 5000);
+    }, 10000);
 
     try {
-      // Refresh the session before making any writes.
-      // This prevents silent failures when the JWT has expired,
-      // which is the most common cause of the modal freezing.
+      // Force a session refresh from Supabase server before any writes.
+      // refreshSession() gets a new JWT even if the current one is stale —
+      // this is more reliable than getSession() which can return a cached
+      // expired token without noticing.
       const {
         data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
 
-      if (sessionError || !session) {
-        throw new Error(
-          "Your session has expired. Please refresh the page and sign in again.",
-        );
+      if (refreshError || !session) {
+        clearTimeout(timeout);
+        setLoading(false);
+        // Session is truly gone — redirect to login
+        window.location.replace("/login");
+        return;
       }
 
       if (isEditing) {
