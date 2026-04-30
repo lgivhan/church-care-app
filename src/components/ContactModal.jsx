@@ -29,6 +29,7 @@ export default function ContactModal({
   onClose,
   onSaved,
 }) {
+  // state variables
   const member = assignment.members;
   const isEditing = !!existingLog;
 
@@ -38,6 +39,7 @@ export default function ContactModal({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -91,6 +93,8 @@ export default function ContactModal({
 
         if (updateError) throw updateError;
       } else {
+        const t1 = Date.now();
+
         const { error: insertError } = await supabase
           .from("contact_logs")
           .insert({
@@ -113,6 +117,8 @@ export default function ContactModal({
           .eq("id", assignment.id);
 
         if (assignmentError) throw assignmentError;
+
+        setDebugInfo(`Insert: ${Date.now() - t1}ms total`);
       }
 
       clearTimeout(timeout);
@@ -167,6 +173,13 @@ export default function ContactModal({
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Debug timing — remove after testing */}
+          {debugInfo && (
+            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-blue-700 text-sm font-mono">{debugInfo}</p>
             </div>
           )}
 
