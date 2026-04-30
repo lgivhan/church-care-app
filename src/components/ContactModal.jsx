@@ -52,11 +52,31 @@ export default function ContactModal({
       return;
     }
 
+    // Safety timeout — if the operation takes more than 10 seconds,
+    // something has gone wrong. Reset the UI so the user can try again.
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setError(
+        "The request timed out. Please check your connection and try again.",
+      );
+    }, 10000);
+
     try {
+      // Refresh the session before making any writes.
+      // This prevents silent failures when the JWT has expired,
+      // which is the most common cause of the modal freezing.
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error(
+          "Your session has expired. Please refresh the page and sign in again.",
+        );
+      }
+
       if (isEditing) {
-        // --------------------------------------------------------
-        // UPDATE existing contact log
-        // --------------------------------------------------------
         const { error: updateError } = await supabase
           .from("contact_logs")
           .update({
@@ -67,18 +87,11 @@ export default function ContactModal({
 
         if (updateError) throw updateError;
       } else {
-        // --------------------------------------------------------
-        // INSERT new contact log
-        // --------------------------------------------------------
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
         const { error: insertError } = await supabase
           .from("contact_logs")
           .insert({
             member_id: assignment.member_id,
-            volunteer_id: user.id,
+            volunteer_id: session.user.id,
             assignment_id: assignment.id,
             notes,
             needs_follow_up: needsFollowUp,
@@ -87,9 +100,6 @@ export default function ContactModal({
 
         if (insertError) throw insertError;
 
-        // --------------------------------------------------------
-        // Mark the assignment as completed
-        // --------------------------------------------------------
         const { error: assignmentError } = await supabase
           .from("assignments")
           .update({
@@ -101,15 +111,16 @@ export default function ContactModal({
         if (assignmentError) throw assignmentError;
       }
 
+      clearTimeout(timeout);
       onSaved();
       onClose();
     } catch (err) {
+      clearTimeout(timeout);
       setError(err.message ?? "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   }
-
   return (
     <>
       {/* Backdrop */}

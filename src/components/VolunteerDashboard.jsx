@@ -43,9 +43,17 @@ export default function VolunteerDashboard() {
     setError("");
 
     try {
+      // Explicitly refresh the session before loading data.
+      // This handles the case where the tab has been open for a long time
+      // and the JWT has expired without the auto-refresh catching it.
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.replace("/login");
+        return;
+      }
+      const user = session.user;
 
       // Load volunteer's profile for the greeting
       const { data: profileData } = await supabase
