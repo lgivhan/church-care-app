@@ -22,12 +22,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// persistSession: true ensures the user stays logged in across
-// browser closes and page refreshes (stored in localStorage).
-// autoRefreshToken: true silently refreshes the JWT before it expires.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    // persistSession: true ensures the user stays logged in across
+    // browser closes and page refreshes (stored in localStorage).
     persistSession: true,
+    // autoRefreshToken: true silently refreshes the JWT before it expires.
     autoRefreshToken: true,
+    // detectSessionInUrl: true allows Supabase to read auth tokens from
+    // the URL on page load — required for password reset links and helps
+    // restore sessions reliably on mobile browsers after backgrounding.
+    detectSessionInUrl: true,
   },
 });

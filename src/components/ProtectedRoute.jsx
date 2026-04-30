@@ -22,45 +22,75 @@ export default function ProtectedRoute({ children, requiredRole }) {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    // Fetch session and profile on mount
+    let mounted = true;
+
     async function loadSessionAndProfile() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
+      try {
+        // First check for an existing session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (session) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, is_active, full_name")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(profile);
+        if (!mounted) return;
+
+        setSession(session);
+
+        if (session) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, is_active, full_name")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!mounted) return;
+          setProfile(profile);
+        }
+      } catch (err) {
+        console.error("Session load error:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      setLoading(false);
     }
 
     loadSessionAndProfile();
 
-    // Listen for auth state changes (login/logout in another tab)
+    // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, is_active, full_name")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(profile);
-      } else {
-        setProfile(null);
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      // On mobile, INITIAL_SESSION fires when session is restored
+      // from storage — this is the reliable signal to use
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        setSession(session);
+
+        if (session) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, is_active, full_name")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!mounted) return;
+          setProfile(profile);
+        } else {
+          setProfile(null);
+        }
+
+        if (mounted) setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Show a neutral loading screen while we check the session.
