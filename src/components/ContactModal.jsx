@@ -44,6 +44,9 @@ export default function ContactModal({
     setLoading(true);
     setError("");
 
+    // background refresh
+    supabase.auth.refreshSession().catch(() => {});
+
     if (!notes.trim()) {
       setError(
         "Please add a note before saving. Even a brief summary helps the pastoral team.",
@@ -66,10 +69,10 @@ export default function ContactModal({
       // expired token without noticing.
       const {
         data: { session },
-        error: refreshError,
-      } = await supabase.auth.refreshSession();
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (refreshError || !session) {
+      if (sessionError || !session) {
         clearTimeout(timeout);
         setLoading(false);
         // Session is truly gone — redirect to login
