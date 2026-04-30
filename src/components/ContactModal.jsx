@@ -59,7 +59,7 @@ export default function ContactModal({
       setError(
         "The request timed out. Please check your connection and try again.",
       );
-    }, 10000);
+    }, 5000);
 
     try {
       // Refresh the session before making any writes.
