@@ -44,9 +44,6 @@ export default function ContactModal({
     setLoading(true);
     setError("");
 
-    // background refresh
-    supabase.auth.refreshSession().catch(() => {});
-
     if (!notes.trim()) {
       setError(
         "Please add a note before saving. Even a brief summary helps the pastoral team.",
