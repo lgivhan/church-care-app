@@ -39,8 +39,6 @@ export default function ContactModal({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
-
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -62,7 +60,7 @@ export default function ContactModal({
       setError(
         "The request is taking too long. Please check your connection, refresh the page and try again.",
       );
-    }, 10000);
+    }, 30000);
 
     try {
       // Force a session refresh from Supabase server before any writes.
@@ -95,30 +93,30 @@ export default function ContactModal({
       } else {
         const t1 = Date.now();
 
-        const { error: insertError } = await supabase
-          .from("contact_logs")
-          .insert({
+        // Run both requests simultaneously instead of one after the other.
+        // This cuts total time roughly in half on slow mobile connections.
+        const [insertResult, updateResult] = await Promise.all([
+          supabase.from("contact_logs").insert({
             member_id: assignment.member_id,
             volunteer_id: session.user.id,
             assignment_id: assignment.id,
             notes,
             needs_follow_up: needsFollowUp,
             contacted_at: new Date().toISOString(),
-          });
+          }),
+          supabase
+            .from("assignments")
+            .update({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", assignment.id),
+        ]);
 
-        if (insertError) throw insertError;
+        if (insertResult.error) throw insertResult.error;
+        if (updateResult.error) throw updateResult.error;
 
-        const { error: assignmentError } = await supabase
-          .from("assignments")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", assignment.id);
-
-        if (assignmentError) throw assignmentError;
-
-        setDebugInfo(`Insert: ${Date.now() - t1}ms total`);
+        console.log("total time:", Date.now() - t1, "ms");
       }
 
       clearTimeout(timeout);
@@ -173,13 +171,6 @@ export default function ContactModal({
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Debug timing — remove after testing */}
-          {debugInfo && (
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-blue-700 text-sm font-mono">{debugInfo}</p>
             </div>
           )}
 
