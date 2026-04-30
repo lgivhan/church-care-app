@@ -57,7 +57,7 @@ export default function ContactModal({
     const timeout = setTimeout(() => {
       setLoading(false);
       setError(
-        "The request timed out. Please check your connection and try again.",
+        "The request is taking too long. Please check your connection, refresh the page and try again.",
       );
     }, 5000);
 
