@@ -110,6 +110,19 @@ export default function AdminDashboard() {
     loadAll();
   }, [selectedWeek]);
 
+  // When the user returns to the app after it's been backgrounded,
+  // reload the page to ensure a fresh session and up-to-date data.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        window.location.reload();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   // --------------------------------------------------------
   // DATA LOADING
   // --------------------------------------------------------
