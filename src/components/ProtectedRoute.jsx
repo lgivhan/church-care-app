@@ -20,6 +20,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -92,6 +93,20 @@ export default function ProtectedRoute({ children, requiredRole }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        setTimedOut(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  if (timedOut) {
+    window.location.replace("/login");
+    return null;
+  }
 
   // Show a neutral loading screen while we check the session.
   // Keeping this simple avoids a flash of the wrong content.
