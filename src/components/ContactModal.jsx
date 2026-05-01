@@ -29,7 +29,6 @@ export default function ContactModal({
   onClose,
   onSaved,
 }) {
-  // state variables
   const member = assignment.members;
   const isEditing = !!existingLog;
 
@@ -60,23 +59,6 @@ export default function ContactModal({
     }, 30000);
 
     try {
-      // Force a session refresh from Supabase server before any writes.
-      // refreshSession() gets a new JWT even if the current one is stale —
-      // this is more reliable than getSession() which can return a cached
-      // expired token without noticing.
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError || !session) {
-        clearTimeout(timeout);
-        setLoading(false);
-        // Session is truly gone — redirect to login
-        window.location.replace("/login");
-        return;
-      }
-
       if (isEditing) {
         const { error: updateError } = await supabase
           .from("contact_logs")
@@ -88,32 +70,42 @@ export default function ContactModal({
 
         if (updateError) throw updateError;
       } else {
-        const t1 = Date.now();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-        // Run both requests simultaneously instead of one after the other.
-        // This cuts total time roughly in half on slow mobile connections.
-        const [insertResult, updateResult] = await Promise.all([
-          supabase.from("contact_logs").insert({
+        if (userError || !user) {
+          clearTimeout(timeout);
+          setLoading(false);
+          setError(
+            "Your session has expired. Please sign out and sign back in.",
+          );
+          return;
+        }
+
+        const { error: insertError } = await supabase
+          .from("contact_logs")
+          .insert({
             member_id: assignment.member_id,
-            volunteer_id: session.user.id,
+            volunteer_id: user.id,
             assignment_id: assignment.id,
             notes,
             needs_follow_up: needsFollowUp,
             contacted_at: new Date().toISOString(),
-          }),
-          supabase
-            .from("assignments")
-            .update({
-              status: "completed",
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", assignment.id),
-        ]);
+          });
 
-        if (insertResult.error) throw insertResult.error;
-        if (updateResult.error) throw updateResult.error;
+        if (insertError) throw insertError;
 
-        console.log("total time:", Date.now() - t1, "ms");
+        const { error: assignmentError } = await supabase
+          .from("assignments")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", assignment.id);
+
+        if (assignmentError) throw assignmentError;
       }
 
       clearTimeout(timeout);
