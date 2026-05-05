@@ -176,6 +176,11 @@ Mark each item ✅ when confirmed or ❌ if something needs fixing.
 - [ ] "Flag for follow-up" checkbox works and saves to database
 - [ ] Empty state message appears if volunteer has no assignments
 - [ ] Sign out button works and redirects to login
+- [ ] Complete Contact modal shows the dropdown with only relevant options (no Call/Text/Voicemail if member has no phone)
+- [ ] Submitting without selecting a method shows error and highlights dropdown red
+- [ ] Voicemail shows the follow-up suggestion note
+- [ ] Saving works correctly with a method selected
+- [ ] Edit Notes modal pre-fills the previously selected method
 
 ---
 
@@ -186,6 +191,9 @@ Mark each item ✅ when confirmed or ❌ if something needs fixing.
 - [ ] Pending volunteers alert appears when volunteers are waiting
 - [ ] Alert shows correct count of pending volunteers
 - [ ] Clicking alert navigates to Volunteers tab and scrolls to pending section
+- [ ] Admin Contact History tab shows Method column
+- [ ] Admin Follow-ups tab shows Method column
+- [ ] Existing logs without a method show — in the Method column
 
 **Overview tab:**
 
