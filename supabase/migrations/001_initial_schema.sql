@@ -9,16 +9,13 @@
 -- Mirrors auth.users. Auto-populated by trigger on signup.
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS members (
-  id              TEXT PRIMARY KEY,
-  first_name      TEXT NOT NULL DEFAULT '',
-  last_name       TEXT NOT NULL DEFAULT '',
-  email           TEXT,
-  phone           TEXT,
-  birthday        DATE,
-  membership_type TEXT,
-  last_contacted  TIMESTAMPTZ,
-  last_synced     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name     TEXT NOT NULL DEFAULT '',
+  email         TEXT NOT NULL DEFAULT '',
+  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer')),
+  is_active     BOOLEAN NOT NULL DEFAULT false,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Trigger function: fires after a new auth.users row is inserted.
@@ -64,6 +61,7 @@ CREATE TABLE IF NOT EXISTS members (
   email           TEXT,
   phone           TEXT,
   birthday        DATE,                     -- nullable; sourced from PCO if available
+  membership_type TEXT, 
   last_contacted  TIMESTAMPTZ,              -- updated when a contact_log is inserted
   last_synced     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -108,6 +106,7 @@ CREATE TABLE IF NOT EXISTS contact_logs (
   volunteer_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   assignment_id   UUID REFERENCES assignments(id) ON DELETE SET NULL,
   notes           TEXT,
+  contact_method  TEXT CHECK (contact_method IN ('call', 'text', 'email', 'voicemail', 'in_person')),
   contacted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   needs_follow_up BOOLEAN NOT NULL DEFAULT false
 );
