@@ -23,6 +23,20 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+function getContactMethodOptions(member) {
+  const options = []
+  if (member?.phone) {
+    options.push({ value: 'call', label: '📞 Phone Call' })
+    options.push({ value: 'text', label: '💬 Text Message' })
+    options.push({ value: 'voicemail', label: '📱 Voicemail' })
+  }
+  if (member?.email) {
+    options.push({ value: 'email', label: '✉️ Email' })
+  }
+  options.push({ value: 'in_person', label: '🤝 In Person' })
+  return options
+}
+
 export default function ContactModal({
   assignment,
   existingLog,
@@ -32,23 +46,35 @@ export default function ContactModal({
   const member = assignment.members;
   const isEditing = !!existingLog;
 
-  const [notes, setNotes] = useState(existingLog?.notes ?? "");
+  const [notes, setNotes] = useState(existingLog?.notes ?? "")
   const [needsFollowUp, setNeedsFollowUp] = useState(
     existingLog?.needs_follow_up ?? false,
   );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [contactMethod, setContactMethod] = useState(existingLog?.contact_method ?? "")
+  const [methodError, setMethodError] = useState(false)
+  const contactMethodOptions = getContactMethodOptions(member)
+
   async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+    setMethodError(false)
 
     if (!notes.trim()) {
       setError(
         "Please add a note before saving. Even a brief summary helps the pastoral team.",
       );
-      setLoading(false);
-      return;
+      setLoading(false)
+      return
+    }
+
+    if (!contactMethod) {
+      setError("Please select how you contacted this person.")
+      setMethodError(true)
+      setLoading(false)
+      return
     }
 
     const timeout = setTimeout(() => {
@@ -65,6 +91,7 @@ export default function ContactModal({
           .update({
             notes,
             needs_follow_up: needsFollowUp,
+            contact_method: contactMethod,
           })
           .eq("id", existingLog.id);
 
@@ -92,6 +119,7 @@ export default function ContactModal({
             assignment_id: assignment.id,
             notes,
             needs_follow_up: needsFollowUp,
+            contact_method: contactMethod,
             contacted_at: new Date().toISOString(),
           });
 
@@ -164,6 +192,37 @@ export default function ContactModal({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Contact method dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                How did you contact this person?
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <select
+                value={contactMethod}
+                onChange={e => {
+                  setContactMethod(e.target.value)
+                  setMethodError(false)
+                }}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  methodError
+                    ? 'border-red-400 bg-red-50 text-red-900'
+                    : 'border-gray-200'
+                }`}
+              >
+                <option value="">Select a method...</option>
+                {contactMethodOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {contactMethod === 'voicemail' && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Note: Voicemail means the member wasn't reached directly. Consider flagging for follow-up below.
+                </p>
+              )}
+            </div>
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

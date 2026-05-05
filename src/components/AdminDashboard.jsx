@@ -62,6 +62,18 @@ function getRecentSundays(count = 8) {
   return sundays;
 }
 
+// Format contact method for display
+function formatContactMethod(method) {
+  const map = {
+    call: '📞 Call',
+    text: '💬 Text',
+    email: '✉️ Email',
+    voicemail: '📱 Voicemail',
+    in_person: '🤝 In Person',
+  }
+  return map[method] ?? '—'
+}
+
 // ============================================================
 // TAB BUTTON
 // ============================================================
@@ -226,6 +238,7 @@ export default function AdminDashboard() {
         notes,
         contacted_at,
         needs_follow_up,
+        contact_method,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name)
       `,
@@ -243,6 +256,7 @@ export default function AdminDashboard() {
         id,
         notes,
         contacted_at,
+        contact_method,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name)
       `,
@@ -279,10 +293,6 @@ export default function AdminDashboard() {
     }
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
         {
@@ -818,6 +828,9 @@ export default function AdminDashboard() {
                         Volunteer
                       </th>
                       <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Method
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
                         Notes
                       </th>
                       <th className="text-left px-4 py-3 text-gray-600 font-medium">
@@ -836,6 +849,9 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {log.profiles?.full_name}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
                           <p className="truncate">{log.notes}</p>
@@ -890,6 +906,9 @@ export default function AdminDashboard() {
                         Flagged by
                       </th>
                       <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Method
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
                         Notes
                       </th>
                       <th className="text-left px-4 py-3 text-gray-600 font-medium">
@@ -905,6 +924,9 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {log.profiles?.full_name}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
                           <p className="truncate">{log.notes}</p>
