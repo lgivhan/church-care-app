@@ -65,13 +65,13 @@ function getRecentSundays(count = 8) {
 // Format contact method for display
 function formatContactMethod(method) {
   const map = {
-    call: '📞 Call',
-    text: '💬 Text',
-    email: '✉️ Email',
-    voicemail: '📱 Voicemail',
-    in_person: '🤝 In Person',
-  }
-  return map[method] ?? '—'
+    call: "📞 Call",
+    text: "💬 Text",
+    email: "✉️ Email",
+    voicemail: "📱 Voicemail",
+    in_person: "🤝 In Person",
+  };
+  return map[method] ?? "—";
 }
 
 // ============================================================
@@ -267,14 +267,23 @@ export default function AdminDashboard() {
   }
 
   async function loadMembersNoContact() {
-    // Members with no email AND no phone
     const { data } = await supabase
       .from("members")
-      .select("id, first_name, last_name, email, phone")
+      .select("id, first_name, last_name, email, phone, membership_type")
       .is("email", null)
       .is("phone", null)
       .order("last_name", { ascending: true });
-    setMembersNoContact(data ?? []);
+
+    // Filter out children and teens client-side since Supabase
+    // doesn't support case-insensitive ILIKE filtering in the JS client
+    // the same way the SQL function does.
+    const filtered = (data ?? []).filter((m) => {
+      if (!m.membership_type) return true;
+      const t = m.membership_type.toLowerCase();
+      return !t.includes("child") && !t.includes("teen");
+    });
+
+    setMembersNoContact(filtered);
   }
 
   // --------------------------------------------------------
