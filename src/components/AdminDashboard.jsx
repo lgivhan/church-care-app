@@ -863,7 +863,12 @@ export default function AdminDashboard() {
                           {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p className="truncate">{log.notes}</p>
+                          <p
+                            className="truncate sm:whitespace-normal sm:overflow-visible"
+                            title={log.notes}
+                          >
+                            {log.notes}
+                          </p>
                         </td>
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                           {formatDateTime(log.contacted_at)}
@@ -938,7 +943,12 @@ export default function AdminDashboard() {
                           {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p className="truncate">{log.notes}</p>
+                          <p
+                            className="truncate sm:whitespace-normal sm:overflow-visible"
+                            title={log.notes}
+                          >
+                            {log.notes}
+                          </p>
                         </td>
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                           {formatDateTime(log.contacted_at)}
