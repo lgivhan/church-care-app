@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name     TEXT NOT NULL DEFAULT '',
   email         TEXT NOT NULL DEFAULT '',
-  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer')),
+  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer', 'prayer_team')),
   is_active     BOOLEAN NOT NULL DEFAULT false,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -108,7 +108,10 @@ CREATE TABLE IF NOT EXISTS contact_logs (
   notes           TEXT,
   contact_method  TEXT CHECK (contact_method IN ('call', 'text', 'email', 'voicemail', 'in_person')),
   contacted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  needs_follow_up BOOLEAN NOT NULL DEFAULT false
+  needs_follow_up BOOLEAN NOT NULL DEFAULT false,
+  follow_up_resolved      BOOLEAN NOT NULL DEFAULT false,
+  prayer_request          BOOLEAN NOT NULL DEFAULT false,
+  prayer_request_resolved BOOLEAN NOT NULL DEFAULT false
 );
 
 -- Index for admin follow-up queries.
