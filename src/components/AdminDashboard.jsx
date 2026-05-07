@@ -114,6 +114,7 @@ export default function AdminDashboard() {
   const [membersNoContact, setMembersNoContact] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [prayerRequests, setPrayerRequests] = useState([]);
 
   // Ref for scrolling to pending volunteers section
   const pendingRef = useRef(null);
@@ -150,6 +151,7 @@ export default function AdminDashboard() {
         loadContactLogs(),
         loadFollowUps(),
         loadMembersNoContact(),
+        loadPrayerRequests(),
       ]);
     } catch (err) {
       setError("Failed to load dashboard data. Please refresh.");
@@ -257,6 +259,7 @@ export default function AdminDashboard() {
         notes,
         contacted_at,
         contact_method,
+        follow_up_resolved,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name)
       `,
@@ -264,6 +267,23 @@ export default function AdminDashboard() {
       .eq("needs_follow_up", true)
       .order("contacted_at", { ascending: false });
     setFollowUps(data ?? []);
+  }
+
+  async function loadPrayerRequests() {
+    const { data } = await supabase
+      .from("contact_logs")
+      .select(`
+        id,
+        notes,
+        contacted_at,
+        contact_method,
+        prayer_request_resolved,
+        members (first_name, last_name),
+        profiles!contact_logs_volunteer_id_fkey (full_name)
+      `)
+      .eq("prayer_request", true)
+      .order("contacted_at", { ascending: false });
+    setPrayerRequests(data ?? []);
   }
 
   async function loadMembersNoContact() {
@@ -334,6 +354,22 @@ export default function AdminDashboard() {
       .update({ is_active: false })
       .eq("id", id);
     if (!error) loadVolunteers();
+  }
+
+  async function resolvePrayerRequest(id) {
+    const { error } = await supabase
+      .from("contact_logs")
+      .update({ prayer_request_resolved: true })
+      .eq("id", id);
+    if (!error) loadPrayerRequests();
+  }
+
+  async function resolveFollowUp(id) {
+    const { error } = await supabase
+      .from("contact_logs")
+      .update({ follow_up_resolved: true })
+      .eq("id", id);
+    if (!error) loadFollowUps();
   }
 
   async function handleSignOut() {
@@ -425,6 +461,12 @@ export default function AdminDashboard() {
             active={activeTab === "followups"}
             onClick={() => setActiveTab("followups")}
             badge={followUps.length}
+          />
+          <TabButton
+            label="Prayer Requests"
+            active={activeTab === "prayer"}
+            onClick={() => setActiveTab("prayer")}
+            badge={prayerRequests.length}
           />
         </div>
       </header>
@@ -928,6 +970,9 @@ export default function AdminDashboard() {
                       <th className="text-left px-4 py-3 text-gray-600 font-medium">
                         Date
                       </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -952,6 +997,88 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                           {formatDateTime(log.contacted_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {log.follow_up_resolved ? (
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                              ✓ Followed up
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => resolveFollowUp(log.id)}
+                              className="text-xs font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-full transition-colors"
+                            >
+                              Mark as followed up
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* -------------------------------------------------- */}
+        {/* TAB: PRAYER REQUESTS                               */}
+        {/* -------------------------------------------------- */}
+        {activeTab === "prayer" && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">Prayer Requests</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Members who have requested prayer from the prayer ministry.
+            </p>
+
+            {prayerRequests.length === 0 ? (
+              <div className="p-6 bg-green-50 border border-green-100 rounded-xl text-center">
+                <p className="text-green-700 text-sm font-medium">
+                  ✅ No open prayer requests.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Member</th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Volunteer</th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {prayerRequests.map((log) => (
+                      <tr key={log.id} className={log.prayer_request_resolved ? "bg-gray-50 opacity-60" : "hover:bg-gray-50"}>
+                        <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
+                          {log.members?.first_name} {log.members?.last_name}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {log.profiles?.full_name}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-xs">
+                          <p className="truncate sm:whitespace-normal" title={log.notes}>
+                            {log.notes}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                          {formatDateTime(log.contacted_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {log.prayer_request_resolved ? (
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                              ✓ Prayed for
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => resolvePrayerRequest(log.id)}
+                              className="text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors"
+                            >
+                              Mark as prayed for
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
