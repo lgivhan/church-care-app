@@ -54,6 +54,7 @@ export default function ContactModal({
   const [error, setError] = useState("")
   const [contactMethod, setContactMethod] = useState(existingLog?.contact_method ?? "")
   const [methodError, setMethodError] = useState(false)
+  const [prayerRequest, setPrayerRequest] = useState(existingLog?.prayer_request ?? false)
   const contactMethodOptions = getContactMethodOptions(member)
 
   async function handleSubmit(e) {
@@ -92,6 +93,7 @@ export default function ContactModal({
             notes,
             needs_follow_up: needsFollowUp,
             contact_method: contactMethod,
+            prayer_request: prayerRequest,
           })
           .eq("id", existingLog.id);
 
@@ -120,6 +122,7 @@ export default function ContactModal({
             notes,
             needs_follow_up: needsFollowUp,
             contact_method: contactMethod,
+            prayer_request: prayerRequest,
             contacted_at: new Date().toISOString(),
           });
 
@@ -254,6 +257,26 @@ export default function ContactModal({
                 <span className="block text-amber-600 text-xs mt-0.5">
                   Check this if this member needs additional pastoral attention
                   or a follow-up call.
+                </span>
+              </label>
+            </div>
+
+            {/* Prayer ministry request */}
+            <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <input
+                type="checkbox"
+                id="prayer-request"
+                checked={prayerRequest}
+                onChange={(e) => setPrayerRequest(e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <label
+                htmlFor="prayer-request"
+                className="text-sm text-blue-800 cursor-pointer"
+              >
+                <span className="font-medium">Prayer ministry request</span>
+                <span className="block text-blue-600 text-xs mt-0.5">
+                  Check this if this member would like the prayer ministry to pray for them.
                 </span>
               </label>
             </div>
