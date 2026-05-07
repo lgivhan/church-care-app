@@ -202,3 +202,37 @@ CREATE POLICY "Admins can read all logs"
 
 -- NO DELETE policies exist on contact_logs for anyone.
 -- Contact history is permanent by design.
+
+-- Prayer team can read contact logs where prayer_request = true
+CREATE POLICY "Prayer team can read prayer requests"
+  ON contact_logs FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'prayer_team'
+      AND is_active = true
+    )
+    AND prayer_request = true
+  );
+
+-- Prayer team can update prayer_request_resolved on prayer request logs
+CREATE POLICY "Prayer team can resolve prayer requests"
+  ON contact_logs FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'prayer_team'
+      AND is_active = true
+    )
+    AND prayer_request = true
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'prayer_team'
+      AND is_active = true
+    )
+  );
