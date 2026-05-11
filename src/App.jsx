@@ -15,6 +15,7 @@ import LoginPage from "./components/LoginPage";
 import VolunteerDashboard from "./components/VolunteerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PrayerDashboard from "./components/PrayerDashboard";
 
 export default function App() {
   return (
@@ -39,6 +40,16 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected prayer ministry route */}
+        <Route
+          path="/prayer"
+          element={
+            <ProtectedRoute requiredRole="prayer_team">
+              <PrayerDashboard />
             </ProtectedRoute>
           }
         />
