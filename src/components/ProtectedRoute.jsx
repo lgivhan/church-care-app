@@ -180,12 +180,12 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
   // Role mismatch — redirect to the correct dashboard
   if (profile.role !== requiredRole) {
-    return (
-      <Navigate
-        to={profile.role === "admin" ? "/admin" : "/dashboard"}
-        replace
-      />
-    );
+    const redirectMap = {
+      admin: "/admin",
+      volunteer: "/dashboard",
+      prayer_team: "/prayer",
+    };
+    return <Navigate to={redirectMap[profile.role] ?? "/login"} replace />;
   }
 
   // All checks passed — render the protected page

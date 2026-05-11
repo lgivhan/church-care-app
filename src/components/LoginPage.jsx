@@ -88,6 +88,8 @@ export default function LoginPage() {
     // they'll see the pending approval screen.
     if (profile.role === "admin") {
       navigate("/admin");
+    } else if (profile.role === "prayer_team") {
+      navigate("/prayer");
     } else {
       navigate("/dashboard");
     }
