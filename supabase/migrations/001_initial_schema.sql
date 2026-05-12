@@ -158,7 +158,7 @@ BEGIN
   -- Count active volunteers who don't yet have assignments this week
   SELECT COUNT(*) INTO v_volunteer_count
   FROM profiles
-  WHERE role = 'volunteer' 
+  WHERE role IN ('volunteer', 'admin') 
     AND is_active = true
     AND id NOT IN (
       SELECT DISTINCT caller_id 
@@ -211,7 +211,7 @@ BEGIN
       id,
       row_number() OVER (ORDER BY created_at ASC) AS vol_index
     FROM profiles
-    WHERE role = 'volunteer' 
+    WHERE role IN ('volunteer', 'admin') 
       AND is_active = true
       AND id NOT IN (
         SELECT DISTINCT caller_id 

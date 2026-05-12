@@ -236,3 +236,33 @@ CREATE POLICY "Prayer team can resolve prayer requests"
       AND is_active = true
     )
   );
+
+-- Allow admins to update their own assignments (to mark as completed)
+CREATE POLICY "Admins can update own assignments"
+  ON assignments FOR UPDATE
+  USING (
+    caller_id = auth.uid()
+    AND is_admin()
+  )
+  WITH CHECK (
+    caller_id = auth.uid()
+  );
+
+-- Allow admins to insert their own contact logs
+CREATE POLICY "Admins can insert own logs"
+  ON contact_logs FOR INSERT
+  WITH CHECK (
+    volunteer_id = auth.uid()
+    AND is_admin()
+  );
+
+-- Allow admins to update their own contact logs (to edit notes)
+CREATE POLICY "Admins can update own logs"
+  ON contact_logs FOR UPDATE
+  USING (
+    volunteer_id = auth.uid()
+    AND is_admin()
+  )
+  WITH CHECK (
+    volunteer_id = auth.uid()
+  );
