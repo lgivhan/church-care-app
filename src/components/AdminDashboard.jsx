@@ -16,6 +16,8 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
+import MemberCard from "./MemberCard";
+import ContactModal from "./ContactModal";
 
 // ============================================================
 // HELPERS
@@ -115,6 +117,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [prayerRequests, setPrayerRequests] = useState([]);
+  const [myAssignments, setMyAssignments] = useState([]);
+  const [myContactLogs, setMyContactLogs] = useState({});
+  const [myModalOpen, setMyModalOpen] = useState(false);
+  const [mySelectedAssignment, setMySelectedAssignment] = useState(null);
+  const [myEditingLog, setMyEditingLog] = useState(null);
+  const [myUserId, setMyUserId] = useState(null);
 
   // Ref for scrolling to pending volunteers section
   const pendingRef = useRef(null);
@@ -152,6 +160,7 @@ export default function AdminDashboard() {
         loadFollowUps(),
         loadMembersNoContact(),
         loadPrayerRequests(),
+        loadMyAssignments(),
       ]);
     } catch (err) {
       setError("Failed to load dashboard data. Please refresh.");
@@ -272,7 +281,8 @@ export default function AdminDashboard() {
   async function loadPrayerRequests() {
     const { data } = await supabase
       .from("contact_logs")
-      .select(`
+      .select(
+        `
         id,
         notes,
         contacted_at,
@@ -280,7 +290,8 @@ export default function AdminDashboard() {
         prayer_request_resolved,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name)
-      `)
+      `,
+      )
       .eq("prayer_request", true)
       .order("contacted_at", { ascending: false });
     setPrayerRequests(data ?? []);
@@ -304,6 +315,58 @@ export default function AdminDashboard() {
     });
 
     setMembersNoContact(filtered);
+  }
+
+  async function loadMyAssignments() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    setMyUserId(user.id);
+
+    const weekStarting = getThisSunday();
+
+    const { data: assignmentData } = await supabase
+      .from("assignments")
+      .select(
+        `
+      id,
+      member_id,
+      status,
+      week_starting,
+      completed_at,
+      members (
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        birthday,
+        membership_type
+      )
+    `,
+      )
+      .eq("caller_id", user.id)
+      .eq("week_starting", weekStarting)
+      .order("status", { ascending: true });
+
+    setMyAssignments(assignmentData ?? []);
+
+    if (assignmentData && assignmentData.length > 0) {
+      const assignmentIds = assignmentData.map((a) => a.id);
+      const { data: logData } = await supabase
+        .from("contact_logs")
+        .select(
+          "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
+        )
+        .in("assignment_id", assignmentIds);
+
+      const logMap = {};
+      logData?.forEach((log) => {
+        logMap[log.assignment_id] = log;
+      });
+      setMyContactLogs(logMap);
+    }
   }
 
   // --------------------------------------------------------
@@ -387,6 +450,28 @@ export default function AdminDashboard() {
     }, 100);
   }
 
+  function handleMyComplete(assignment) {
+    setMySelectedAssignment(assignment);
+    setMyEditingLog(null);
+    setMyModalOpen(true);
+  }
+
+  function handleMyEdit(assignment) {
+    setMySelectedAssignment(assignment);
+    setMyEditingLog(myContactLogs[assignment.id] ?? null);
+    setMyModalOpen(true);
+  }
+
+  function handleMyModalClose() {
+    setMyModalOpen(false);
+    setMySelectedAssignment(null);
+    setMyEditingLog(null);
+  }
+
+  function handleMySaved() {
+    loadMyAssignments();
+  }
+
   // --------------------------------------------------------
   // DERIVED DATA
   // --------------------------------------------------------
@@ -435,6 +520,11 @@ export default function AdminDashboard() {
             label="Overview"
             active={activeTab === "overview"}
             onClick={() => setActiveTab("overview")}
+          />
+          <TabButton
+            label="My Contacts"
+            active={activeTab === "mycontacts"}
+            onClick={() => setActiveTab("mycontacts")}
           />
           <TabButton
             label="Assignments"
@@ -586,6 +676,104 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* -------------------------------------------------- */}
+        {/* TAB: MY CONTACTS                                   */}
+        {/* -------------------------------------------------- */}
+        {activeTab === "mycontacts" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-800">My Contacts</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Week of{" "}
+                {new Date(getThisSunday() + "T00:00:00").toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                )}
+              </p>
+
+              {myAssignments.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>
+                      {
+                        myAssignments.filter((a) => a.status === "completed")
+                          .length
+                      }{" "}
+                      of {myAssignments.length} contacted
+                      {myAssignments.filter((a) => a.status === "pending")
+                        .length > 0 &&
+                        ` · ${myAssignments.filter((a) => a.status === "pending").length} remaining`}
+                    </span>
+                    {myAssignments.every((a) => a.status === "completed") && (
+                      <span className="text-green-600 font-medium">
+                        All done! 🎉
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${(myAssignments.filter((a) => a.status === "completed").length / myAssignments.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {myAssignments.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg
+                    className="w-8 h-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-gray-600 font-medium mb-1">
+                  No contacts assigned yet this week
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  Check back after Sunday when new assignments are generated.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 max-w-2xl">
+                {myAssignments.map((assignment) => (
+                  <MemberCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    onComplete={handleMyComplete}
+                    onEdit={handleMyEdit}
+                  />
+                ))}
+              </div>
+            )}
+
+            {myModalOpen && mySelectedAssignment && (
+              <ContactModal
+                assignment={mySelectedAssignment}
+                existingLog={myEditingLog}
+                onClose={handleMyModalClose}
+                onSaved={handleMySaved}
+              />
             )}
           </div>
         )}
@@ -1026,7 +1214,9 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "prayer" && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">Prayer Requests</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-1">
+              Prayer Requests
+            </h2>
             <p className="text-sm text-gray-500 mb-4">
               Members who have requested prayer from the prayer ministry.
             </p>
@@ -1042,16 +1232,33 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Member</th>
-                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Volunteer</th>
-                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Notes</th>
-                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Date</th>
-                      <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Member
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Volunteer
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Notes
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Date
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-600 font-medium">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {prayerRequests.map((log) => (
-                      <tr key={log.id} className={log.prayer_request_resolved ? "bg-gray-50 opacity-60" : "hover:bg-gray-50"}>
+                      <tr
+                        key={log.id}
+                        className={
+                          log.prayer_request_resolved
+                            ? "bg-gray-50 opacity-60"
+                            : "hover:bg-gray-50"
+                        }
+                      >
                         <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
                           {log.members?.first_name} {log.members?.last_name}
                         </td>
@@ -1059,7 +1266,10 @@ export default function AdminDashboard() {
                           {log.profiles?.full_name}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p className="truncate sm:whitespace-normal" title={log.notes}>
+                          <p
+                            className="truncate sm:whitespace-normal"
+                            title={log.notes}
+                          >
                             {log.notes}
                           </p>
                         </td>
