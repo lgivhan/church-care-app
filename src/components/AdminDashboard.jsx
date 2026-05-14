@@ -779,6 +779,7 @@ export default function AdminDashboard() {
               <EmptyState message="No assignments found for this week." />
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -817,6 +818,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -844,6 +846,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -876,6 +879,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -900,6 +904,7 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
@@ -939,6 +944,7 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -957,6 +963,7 @@ export default function AdminDashboard() {
                 <EmptyState message="No active volunteers found." />
               ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
@@ -1023,6 +1030,7 @@ export default function AdminDashboard() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -1045,6 +1053,7 @@ export default function AdminDashboard() {
               <EmptyState message="No contact logs yet." />
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -1081,10 +1090,7 @@ export default function AdminDashboard() {
                           {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p
-                            className="truncate sm:whitespace-normal sm:overflow-visible"
-                            title={log.notes}
-                          >
+                          <p className="whitespace-normal" title={log.notes}>
                             {log.notes}
                           </p>
                         </td>
@@ -1102,6 +1108,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -1128,6 +1135,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -1164,10 +1172,7 @@ export default function AdminDashboard() {
                           {formatContactMethod(log.contact_method)}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p
-                            className="truncate sm:whitespace-normal sm:overflow-visible"
-                            title={log.notes}
-                          >
+                          <p className="whitespace-normal" title={log.notes}>
                             {log.notes}
                           </p>
                         </td>
@@ -1192,6 +1197,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -1217,6 +1223,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -1254,10 +1261,7 @@ export default function AdminDashboard() {
                           {log.profiles?.full_name}
                         </td>
                         <td className="px-4 py-3 text-gray-600 max-w-xs">
-                          <p
-                            className="truncate sm:whitespace-normal"
-                            title={log.notes}
-                          >
+                          <p className="whitespace-normal" title={log.notes}>
                             {log.notes}
                           </p>
                         </td>
@@ -1282,6 +1286,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
