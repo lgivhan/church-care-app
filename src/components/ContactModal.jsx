@@ -104,6 +104,7 @@ export default function ContactModal({
 
         if (updateError) throw updateError;
       } else {
+        console.log("A - starting else branch", Date.now());
         if (!userId) {
           clearTimeout(timeout);
           setLoading(false);
@@ -112,6 +113,8 @@ export default function ContactModal({
           );
           return;
         }
+
+        console.log("C - about to insert contact_log", Date.now());
 
         const { error: insertError } = await supabase
           .from("contact_logs")
@@ -126,7 +129,11 @@ export default function ContactModal({
             contacted_at: new Date().toISOString(),
           });
 
+        console.log("D - insert done", Date.now());
+
         if (insertError) throw insertError;
+
+        console.log("E - about to update assignment", Date.now());
 
         const { error: assignmentError } = await supabase
           .from("assignments")
@@ -135,6 +142,8 @@ export default function ContactModal({
             completed_at: new Date().toISOString(),
           })
           .eq("id", assignment.id);
+
+        console.log("F - update done", Date.now());
 
         if (assignmentError) throw assignmentError;
       }
