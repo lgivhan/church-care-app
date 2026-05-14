@@ -38,3 +38,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     lock: false,
   },
 });
+
+// Returns the current access token synchronously from localStorage
+// without making any network calls or acquiring any locks.
+export function getAccessToken() {
+  try {
+    const raw = localStorage.getItem(
+      `sb-${import.meta.env.VITE_SUPABASE_URL.split("//")[1].split(".")[0]}-auth-token`,
+    );
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
