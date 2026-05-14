@@ -33,5 +33,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // the URL on page load — required for password reset links and helps
     // restore sessions reliably on mobile browsers after backgrounding.
     detectSessionInUrl: true,
+    // Disables the navigator.locks mechanism
+    // that causes orphaned locks after tab switching
+    lock: false,
   },
 });
