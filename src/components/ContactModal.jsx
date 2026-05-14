@@ -149,16 +149,29 @@ export default function ContactModal({
 
         console.log("E - about to update assignment", Date.now());
 
-        const { error: assignmentError } = await supabase
-          .from("assignments")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", assignment.id);
+        const assignmentResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/assignments?id=eq.${assignment.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify({
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            }),
+          },
+        );
 
-        console.log("F - update done", Date.now());
-        if (assignmentError) throw assignmentError;
+        console.log("F - update done", assignmentResponse.status, Date.now());
+
+        if (!assignmentResponse.ok) {
+          const errText = await assignmentResponse.text();
+          throw new Error(`Assignment update failed: ${errText}`);
+        }
       }
 
       clearTimeout(timeout);
