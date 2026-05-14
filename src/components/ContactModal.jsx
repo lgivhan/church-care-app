@@ -22,7 +22,6 @@
 
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { createClient } from "@supabase/supabase-js";
 
 function getContactMethodOptions(member) {
   const options = [];
@@ -118,27 +117,7 @@ export default function ContactModal({
 
         console.log("C - about to insert contact_log", Date.now());
 
-        // Create a fresh Supabase client for this operation.
-        // The shared client can get into a stale state after tab switching
-        // causing fetch calls to hang indefinitely. A fresh client
-        // bypasses this entirely.
-        const freshClient = createClient(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_ANON_KEY,
-        );
-
-        // Copy the current session into the fresh client
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          await freshClient.auth.setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-          });
-        }
-
-        const { error: insertError } = await freshClient
+        const { error: insertError } = await supabase
           .from("contact_logs")
           .insert({
             member_id: assignment.member_id,
@@ -156,7 +135,7 @@ export default function ContactModal({
 
         console.log("E - about to update assignment", Date.now());
 
-        const { error: assignmentError } = await freshClient
+        const { error: assignmentError } = await supabase
           .from("assignments")
           .update({
             status: "completed",
