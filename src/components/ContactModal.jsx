@@ -117,21 +117,35 @@ export default function ContactModal({
 
         console.log("C - about to insert contact_log", Date.now());
 
-        const { error: insertError } = await supabase
-          .from("contact_logs")
-          .insert({
-            member_id: assignment.member_id,
-            volunteer_id: userId,
-            assignment_id: assignment.id,
-            notes,
-            needs_follow_up: needsFollowUp,
-            contact_method: contactMethod,
-            prayer_request: prayerRequest,
-            contacted_at: new Date().toISOString(),
-          });
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify({
+              member_id: assignment.member_id,
+              volunteer_id: userId,
+              assignment_id: assignment.id,
+              notes,
+              needs_follow_up: needsFollowUp,
+              contact_method: contactMethod,
+              prayer_request: prayerRequest,
+              contacted_at: new Date().toISOString(),
+            }),
+          },
+        );
 
-        console.log("D - insert done", Date.now());
-        if (insertError) throw insertError;
+        console.log("D - insert done", response.status, Date.now());
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Insert failed: ${errText}`);
+        }
 
         console.log("E - about to update assignment", Date.now());
 
