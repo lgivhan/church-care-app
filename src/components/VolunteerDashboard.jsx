@@ -26,6 +26,7 @@ export default function VolunteerDashboard() {
   const [contactLogs, setContactLogs] = useState({}); // keyed by assignment_id
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,6 +56,7 @@ export default function VolunteerDashboard() {
         return;
       }
       const user = session.user;
+      setCurrentUserId(user.id);
 
       // Load volunteer's profile for the greeting
       const { data: profileData } = await supabase
@@ -287,6 +289,7 @@ export default function VolunteerDashboard() {
           existingLog={editingLog}
           onClose={handleModalClose}
           onSaved={handleSaved}
+          userId={currentUserId}
         />
       )}
     </div>

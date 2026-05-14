@@ -760,6 +760,7 @@ export default function AdminDashboard() {
                 existingLog={myEditingLog}
                 onClose={handleMyModalClose}
                 onSaved={handleMySaved}
+                userId={myUserId}
               />
             )}
           </div>

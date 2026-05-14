@@ -42,6 +42,7 @@ export default function ContactModal({
   existingLog,
   onClose,
   onSaved,
+  userId,
 }) {
   const member = assignment.members;
   const isEditing = !!existingLog;
@@ -103,16 +104,7 @@ export default function ContactModal({
 
         if (updateError) throw updateError;
       } else {
-        console.log("A - starting else branch", Date.now());
-
-        const session = supabase.auth.session?.();
-        const user =
-          session?.user ??
-          (await supabase.auth.getSession()).data.session?.user;
-
-        console.log("B - got user", user?.id, Date.now());
-
-        if (!user) {
+        if (!userId) {
           clearTimeout(timeout);
           setLoading(false);
           setError(
@@ -121,13 +113,11 @@ export default function ContactModal({
           return;
         }
 
-        console.log("C - about to insert contact_log", Date.now());
-
         const { error: insertError } = await supabase
           .from("contact_logs")
           .insert({
             member_id: assignment.member_id,
-            volunteer_id: user.id,
+            volunteer_id: userId,
             assignment_id: assignment.id,
             notes,
             needs_follow_up: needsFollowUp,
@@ -136,11 +126,7 @@ export default function ContactModal({
             contacted_at: new Date().toISOString(),
           });
 
-        console.log("D - insert done", Date.now());
-
         if (insertError) throw insertError;
-
-        console.log("E - about to update assignment", Date.now());
 
         const { error: assignmentError } = await supabase
           .from("assignments")
@@ -149,8 +135,6 @@ export default function ContactModal({
             completed_at: new Date().toISOString(),
           })
           .eq("id", assignment.id);
-
-        console.log("F - update done", Date.now());
 
         if (assignmentError) throw assignmentError;
       }
