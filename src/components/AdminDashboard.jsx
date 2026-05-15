@@ -555,7 +555,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab navigation — horizontally scrollable, no visible scrollbar */}
-        <div className="max-w-6xl mx-auto px-4 pb-3 flex gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="max-w-6xl mx-auto px-4 pt-2 pb-3 flex gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <TabButton label="Overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
           <TabButton label="My Contacts" active={activeTab === "mycontacts"} onClick={() => setActiveTab("mycontacts")} />
           <TabButton label="Assignments" active={activeTab === "assignments"} onClick={() => setActiveTab("assignments")} />
