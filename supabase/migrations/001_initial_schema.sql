@@ -10,12 +10,15 @@
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name     TEXT NOT NULL DEFAULT '',
-  email         TEXT NOT NULL DEFAULT '',
-  role          TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer', 'prayer_team')),
-  is_active     BOOLEAN NOT NULL DEFAULT false,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id               UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name        TEXT NOT NULL DEFAULT '',
+  email            TEXT NOT NULL DEFAULT '',
+  role             TEXT NOT NULL DEFAULT 'volunteer' CHECK (role IN ('admin', 'volunteer', 'prayer_team')),
+  is_active        BOOLEAN NOT NULL DEFAULT false,
+  ministry         TEXT CHECK (ministry IN ('elder', 'deacon', 'greeter', 'other')),
+  is_non_technical BOOLEAN NOT NULL DEFAULT false,
+  invite_pending   BOOLEAN NOT NULL DEFAULT false,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Trigger function: fires after a new auth.users row is inserted.
@@ -111,7 +114,8 @@ CREATE TABLE IF NOT EXISTS contact_logs (
   needs_follow_up BOOLEAN NOT NULL DEFAULT false,
   follow_up_resolved      BOOLEAN NOT NULL DEFAULT false,
   prayer_request          BOOLEAN NOT NULL DEFAULT false,
-  prayer_request_resolved BOOLEAN NOT NULL DEFAULT false
+  prayer_request_resolved BOOLEAN NOT NULL DEFAULT false,
+  logged_by               UUID REFERENCES profiles(id)
 );
 
 -- Index for admin follow-up queries.
