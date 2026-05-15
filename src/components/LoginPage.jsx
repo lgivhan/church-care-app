@@ -20,19 +20,51 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
+const inputClass =
+  "w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-amber-50/40 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent placeholder:text-stone-400 transition-shadow";
+
+const labelClass = "block text-sm font-medium text-stone-700 mb-1";
+
+function WarmBackground({ children }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100 flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-amber-300/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-300/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="max-w-md w-full relative">{children}</div>
+    </div>
+  );
+}
+
+function HeartIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
+function AppHeader({ subtitle }) {
+  return (
+    <div className="text-center mb-8">
+      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-200">
+        <HeartIcon className="w-10 h-10 text-white" />
+      </div>
+      <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
+        Church Care
+      </h1>
+      <p className="text-stone-500 text-sm mt-2">{subtitle}</p>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  // Toggle between 'login' and 'signup' views
   const [mode, setMode] = useState("login");
-
-  // Form fields
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
@@ -42,18 +74,12 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
-    // When Supabase redirects back after a password reset email click,
-    // it appends #access_token and type=recovery to the URL.
-    // We detect this and show the new password form.
     const hash = window.location.hash;
     if (hash && hash.includes("type=recovery")) {
       setIsResettingPassword(true);
     }
   }, []);
 
-  // --------------------------------------------------------
-  // Handle login form submission
-  // --------------------------------------------------------
   async function handleLogin(e) {
     e.preventDefault();
     setLoading(true);
@@ -70,7 +96,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Fetch profile to determine where to redirect
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role, is_active")
@@ -83,9 +108,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Redirect based on role.
-    // Inactive volunteers are handled by ProtectedRoute —
-    // they'll see the pending approval screen.
     if (profile.role === "admin") {
       navigate("/admin");
     } else if (profile.role === "prayer_team") {
@@ -129,27 +151,20 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
 
     if (error) {
       setError(error.message);
     } else {
-      // Password updated — sign them out and back to login
       await supabase.auth.signOut();
       setIsResettingPassword(false);
       setNewPassword("");
       setError("");
-      // Show a success message by reusing resetSent state
       setPasswordUpdated(true);
     }
     setLoading(false);
   }
 
-  // --------------------------------------------------------
-  // Handle signup form submission
-  // --------------------------------------------------------
   async function handleSignup(e) {
     e.preventDefault();
     setLoading(true);
@@ -171,11 +186,7 @@ export default function LoginPage() {
       email,
       password,
       options: {
-        // This data is passed to the handle_new_user() trigger
-        // which copies full_name into the profiles table.
-        data: {
-          full_name: fullName.trim(),
-        },
+        data: { full_name: fullName.trim() },
       },
     });
 
@@ -185,86 +196,54 @@ export default function LoginPage() {
       return;
     }
 
-    // Show success message — account needs admin approval before login
     setSignupSuccess(true);
     setLoading(false);
   }
 
   if (isResettingPassword) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
+      <WarmBackground>
+        <AppHeader subtitle="Create a new password" />
+        <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-8">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Set New Password
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Enter your new password below
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSetNewPassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  New password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  placeholder="At least 6 characters"
-                  minLength={6}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
-              >
-                {loading ? "Saving..." : "Set New Password"}
-              </button>
-            </form>
-          </div>
+          )}
+          <form onSubmit={handleSetNewPassword} className="space-y-4">
+            <div>
+              <label className={labelClass}>New password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                placeholder="At least 6 characters"
+                minLength={6}
+                className={inputClass}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-md shadow-amber-200 mt-2"
+            >
+              {loading ? "Saving..." : "Set New Password"}
+            </button>
+          </form>
         </div>
-      </div>
+        <Tagline />
+      </WarmBackground>
     );
   }
 
-  // --------------------------------------------------------
-  // Signup success screen
-  // --------------------------------------------------------
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <WarmBackground>
+        <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-10 text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <svg
-              className="w-8 h-8 text-green-600"
+              className="w-8 h-8 text-amber-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -277,17 +256,17 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            Check your email
+          <h2 className="text-xl font-bold text-stone-800 mb-2">
+            Almost there!
           </h2>
-          <p className="text-gray-500 text-sm leading-relaxed mb-3">
+          <p className="text-stone-500 text-sm leading-relaxed mb-3">
             We sent a confirmation link to{" "}
-            <span className="font-medium text-gray-700">{email}</span>. Please
-            click it to verify your email address.
+            <span className="font-semibold text-stone-700">{email}</span>.
+            Please click it to verify your email address.
           </p>
-          <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            After confirming your email, a church administrator will need to
-            approve your account before you can log in.
+          <p className="text-stone-500 text-sm leading-relaxed mb-8">
+            After confirming your email, a church administrator will approve
+            your account — we'll be in touch soon!
           </p>
           <button
             onClick={() => {
@@ -298,205 +277,176 @@ export default function LoginPage() {
               setConfirmPassword("");
               setFullName("");
             }}
-            className="text-sm text-blue-600 hover:text-blue-700 underline"
+            className="text-sm text-amber-600 hover:text-amber-700 font-medium underline underline-offset-2"
           >
-            Back to login
+            Back to sign in
           </button>
         </div>
-      </div>
+        <Tagline />
+      </WarmBackground>
     );
   }
 
-  // --------------------------------------------------------
-  // Main login / signup form
-  // --------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">Church Care</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {mode === "login"
-              ? "Sign in to your account"
-              : "Create a new account"}
-          </p>
-        </div>
+    <WarmBackground>
+      <AppHeader
+        subtitle={
+          mode === "login"
+            ? "Welcome back — glad you're here"
+            : "Join us in caring for our community"
+        }
+      />
 
-        {/* Form card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          {/* Error message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
+      <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-8">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
+        <form
+          onSubmit={mode === "login" ? handleLogin : handleSignup}
+          className="space-y-4"
+        >
+          {mode === "signup" && (
+            <div>
+              <label className={labelClass}>Full name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                placeholder="Jane Smith"
+                className={inputClass}
+              />
             </div>
           )}
 
-          <form
-            onSubmit={mode === "login" ? handleLogin : handleSignup}
-            className="space-y-4"
-          >
-            {/* Full name — signup only */}
-            {mode === "signup" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full name
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  placeholder="Jane Smith"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            )}
+          <div>
+            <label className={labelClass}>Email address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="jane@example.com"
+              className={inputClass}
+            />
+          </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="jane@example.com"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label className={labelClass}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder={mode === "signup" ? "At least 6 characters" : "••••••••"}
+              minLength={6}
+              className={inputClass}
+            />
+          </div>
 
-            {/* Password */}
+          {mode === "signup" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
+              <label className={labelClass}>Confirm password</label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                placeholder={
-                  mode === "signup" ? "At least 6 characters" : "••••••••"
-                }
+                placeholder="Re-enter your password"
                 minLength={6}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
               />
             </div>
+          )}
 
-            {/* Confirm password — signup only */}
-            {mode === "signup" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  placeholder="Re-enter your password"
-                  minLength={6}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            )}
-
-            {mode === "login" && resetSent && (
-              <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
-                <p className="text-green-700 text-sm">
-                  Password reset email sent! Check your inbox and follow the
-                  link to reset your password.
-                </p>
-              </div>
-            )}
-
-            {mode === "login" && passwordUpdated && (
-              <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
-                <p className="text-green-700 text-sm">
-                  Password updated! You can now sign in with your new password.
-                </p>
-              </div>
-            )}
-
-            {mode === "login" && !resetSent && (
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={handlePasswordReset}
-                  className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                >
-                  Forgot your password?
-                </button>
-              </div>
-            )}
-
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
-            >
-              {loading
-                ? mode === "login"
-                  ? "Signing in..."
-                  : "Creating account..."
-                : mode === "login"
-                  ? "Sign in"
-                  : "Create account"}
-            </button>
-          </form>
-
-          {/* Toggle between login and signup */}
-          <div className="mt-6 text-center">
-            {mode === "login" ? (
-              <p className="text-sm text-gray-500">
-                Don't have an account?{" "}
-                <button
-                  onClick={() => {
-                    setMode("signup");
-                    setError("");
-                    setConfirmPassword("");
-                  }}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Sign up
-                </button>
+          {mode === "login" && resetSent && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <p className="text-amber-800 text-sm">
+                Password reset email sent! Check your inbox and follow the link
+                to reset your password.
               </p>
-            ) : (
-              <p className="text-sm text-gray-500">
-                Already have an account?{" "}
-                <button
-                  onClick={() => {
-                    setMode("login");
-                    setError("");
-                  }}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Sign in
-                </button>
+            </div>
+          )}
+
+          {mode === "login" && passwordUpdated && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <p className="text-amber-800 text-sm">
+                Password updated! You can now sign in with your new password.
               </p>
-            )}
-          </div>
+            </div>
+          )}
+
+          {mode === "login" && !resetSent && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                className="text-xs text-stone-400 hover:text-amber-600 transition-colors"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-md shadow-amber-200 mt-2"
+          >
+            {loading
+              ? mode === "login"
+                ? "Signing in..."
+                : "Creating account..."
+              : mode === "login"
+                ? "Sign in"
+                : "Create account"}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          {mode === "login" ? (
+            <p className="text-sm text-stone-500">
+              Don&apos;t have an account?{" "}
+              <button
+                onClick={() => {
+                  setMode("signup");
+                  setError("");
+                  setConfirmPassword("");
+                }}
+                className="text-amber-600 hover:text-amber-700 font-semibold"
+              >
+                Sign up
+              </button>
+            </p>
+          ) : (
+            <p className="text-sm text-stone-500">
+              Already have an account?{" "}
+              <button
+                onClick={() => {
+                  setMode("login");
+                  setError("");
+                }}
+                className="text-amber-600 hover:text-amber-700 font-semibold"
+              >
+                Sign in
+              </button>
+            </p>
+          )}
         </div>
       </div>
-    </div>
+
+      <Tagline />
+    </WarmBackground>
+  );
+}
+
+function Tagline() {
+  return (
+    <p className="text-center text-stone-400 text-xs mt-6">
+      Serving with love, one connection at a time
+    </p>
   );
 }
