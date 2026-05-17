@@ -139,11 +139,11 @@ CREATE INDEX IF NOT EXISTS idx_contact_logs_member
 --   4. Get all members NOT already assigned this week,
 --      ordered by last_contacted ASC NULLS FIRST (longest-waiting first).
 --   5. Use row_number() to distribute members round-robin across
---      volunteers, capped at 5 per volunteer.
+--      volunteers, capped at 15 per volunteer.
 --   6. Insert the resulting assignments.
 --
 -- This approach uses a single ranked query to prevent duplicates.
--- We do NOT loop with LIMIT 5 per volunteer, which would cause
+-- We do NOT loop with LIMIT 15 per volunteer, which would cause
 -- overlapping member selections.
 -- ============================================================
 
@@ -225,7 +225,7 @@ BEGIN
   ) v
     ON ((m.member_rank - 1) % v_volunteer_count) + 1 = v.vol_index
   WHERE
-    CEIL(m.member_rank::FLOAT / v_volunteer_count) <= 5;
+    CEIL(m.member_rank::FLOAT / v_volunteer_count) <= 15;
  
   RAISE NOTICE 'Weekly assignments generated for week starting %.', v_week_starting;
 END;
