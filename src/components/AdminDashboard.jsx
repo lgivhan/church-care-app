@@ -519,10 +519,12 @@ export default function AdminDashboard() {
         const { data, error } = await supabase.functions.invoke(
           "createVolunteer",
           {
-            full_name: newVolunteerName.trim(),
-            email: `nontechnical_${crypto.randomUUID()}@placeholder.churchcare`,
-            ministry: newVolunteerMinistry,
-            is_non_technical: true,
+            body: {
+              full_name: newVolunteerName.trim(),
+              email: `nontechnical_${crypto.randomUUID()}@placeholder.churchcare`,
+              ministry: newVolunteerMinistry,
+              is_non_technical: true,
+            },
           },
         );
 
