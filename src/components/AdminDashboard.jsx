@@ -512,18 +512,25 @@ export default function AdminDashboard() {
           );
         }
       } else {
-        const { error } = await supabase.from("profiles").insert({
-          id: crypto.randomUUID(),
-          full_name: newVolunteerName.trim(),
-          email: "",
-          role: "volunteer",
-          is_active: true,
-          is_non_technical: true,
-          invite_pending: false,
-          ministry: newVolunteerMinistry,
-        });
+        // For non-technical volunteers: create a placeholder auth account
+        // using a generated email they'll never use. Routes through the
+        // same Edge Function as technical volunteers but with
+        // is_non_technical = true and invite_pending = false.
+        const { data, error } = await supabase.functions.invoke(
+          "createVolunteer",
+          {
+            full_name: newVolunteerName.trim(),
+            email: `nontechnical_${crypto.randomUUID()}@placeholder.churchcare`,
+            ministry: newVolunteerMinistry,
+            is_non_technical: true,
+          },
+        );
 
-        if (error) throw error;
+        if (error || data?.error) {
+          throw new Error(
+            error?.message ?? data?.error ?? "Failed to create volunteer",
+          );
+        }
       }
 
       setNewVolunteerName("");

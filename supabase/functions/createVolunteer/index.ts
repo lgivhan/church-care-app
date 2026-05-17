@@ -48,7 +48,10 @@ Deno.serve(async (req: Request) => {
       .update({
         ministry,
         is_non_technical,
-        invite_pending: true,
+        // Technical volunteers get invite_pending = true so admin
+        // can send invites in bulk later. Non-technical volunteers
+        // never log in so no invite is needed.
+        invite_pending: !is_non_technical,
         is_active: true,
       })
       .eq("id", authData.user.id);
