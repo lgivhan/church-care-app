@@ -266,3 +266,8 @@ CREATE POLICY "Admins can update own logs"
   WITH CHECK (
     volunteer_id = auth.uid()
   );
+
+-- Allow admins to insert new profiles (for creating volunteer accounts)
+CREATE POLICY "Admins can insert profiles"
+  ON profiles FOR INSERT
+  WITH CHECK (is_admin());

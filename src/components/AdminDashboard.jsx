@@ -106,7 +106,9 @@ function TabButton({ label, active, onClick, badge }) {
 
 function SectionCard({ children, className = "" }) {
   return (
-    <div className={`bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm ${className}`}>
+    <div
+      className={`bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm ${className}`}
+    >
       {children}
     </div>
   );
@@ -178,6 +180,14 @@ export default function AdminDashboard() {
   const [mySelectedAssignment, setMySelectedAssignment] = useState(null);
   const [myEditingLog, setMyEditingLog] = useState(null);
   const [myUserId, setMyUserId] = useState(null);
+  const [showAddVolunteer, setShowAddVolunteer] = useState(false);
+  const [newVolunteerName, setNewVolunteerName] = useState("");
+  const [newVolunteerEmail, setNewVolunteerEmail] = useState("");
+  const [newVolunteerMinistry, setNewVolunteerMinistry] = useState("");
+  const [newVolunteerType, setNewVolunteerType] = useState("technical");
+  const [addingVolunteer, setAddingVolunteer] = useState(false);
+  const [addVolunteerError, setAddVolunteerError] = useState("");
+  const [sendingInvites, setSendingInvites] = useState(false);
 
   const pendingRef = useRef(null);
 
@@ -244,7 +254,9 @@ export default function AdminDashboard() {
   async function loadVolunteers() {
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, is_active, created_at")
+      .select(
+        "id, full_name, email, is_active, is_non_technical, invite_pending, ministry, created_at",
+      )
       .eq("role", "volunteer")
       .eq("is_active", true)
       .order("full_name", { ascending: true });
@@ -453,6 +465,106 @@ export default function AdminDashboard() {
     if (!error) loadVolunteers();
   }
 
+  async function addVolunteer(e) {
+    e.preventDefault();
+    setAddingVolunteer(true);
+    setAddVolunteerError("");
+
+    const isTechnical = newVolunteerType === "technical";
+
+    if (!newVolunteerName.trim()) {
+      setAddVolunteerError("Please enter a full name.");
+      setAddingVolunteer(false);
+      return;
+    }
+
+    if (isTechnical && !newVolunteerEmail.trim()) {
+      setAddVolunteerError(
+        "Please enter an email address for technical volunteers.",
+      );
+      setAddingVolunteer(false);
+      return;
+    }
+
+    if (!newVolunteerMinistry) {
+      setAddVolunteerError("Please select a ministry.");
+      setAddingVolunteer(false);
+      return;
+    }
+
+    try {
+      if (isTechnical) {
+        const { data, error } = await supabase.functions.invoke(
+          "createVolunteer",
+          {
+            body: {
+              full_name: newVolunteerName.trim(),
+              email: newVolunteerEmail.trim(),
+              ministry: newVolunteerMinistry,
+              is_non_technical: false,
+            },
+          },
+        );
+
+        if (error || data?.error) {
+          throw new Error(
+            error?.message ?? data?.error ?? "Failed to create volunteer",
+          );
+        }
+      } else {
+        const { error } = await supabase.from("profiles").insert({
+          id: crypto.randomUUID(),
+          full_name: newVolunteerName.trim(),
+          email: "",
+          role: "volunteer",
+          is_active: true,
+          is_non_technical: true,
+          invite_pending: false,
+          ministry: newVolunteerMinistry,
+        });
+
+        if (error) throw error;
+      }
+
+      setNewVolunteerName("");
+      setNewVolunteerEmail("");
+      setNewVolunteerMinistry("");
+      setNewVolunteerType("technical");
+      setShowAddVolunteer(false);
+      loadVolunteers();
+    } catch (err) {
+      setAddVolunteerError(
+        err.message ?? "Something went wrong. Please try again.",
+      );
+    } finally {
+      setAddingVolunteer(false);
+    }
+  }
+
+  async function sendPendingInvites() {
+    if (
+      !window.confirm(
+        "Send invite emails to all volunteers with pending invites?",
+      )
+    )
+      return;
+    setSendingInvites(true);
+
+    try {
+      const { data, error } =
+        await supabase.functions.invoke("sendPendingInvites");
+      if (error || data?.error) throw new Error(error?.message ?? data?.error);
+      alert(
+        `Invites sent successfully to ${data.count} volunteer${data.count !== 1 ? "s" : ""}.`,
+      );
+      loadVolunteers();
+    } catch (err) {
+      alert("Failed to send invites: " + err.message);
+    } finally {
+      setSendingInvites(false);
+    }
+  }
+
   async function resolvePrayerRequest(id) {
     const { error } = await supabase
       .from("contact_logs")
@@ -477,7 +589,10 @@ export default function AdminDashboard() {
   function scrollToPending() {
     setActiveTab("volunteers");
     setTimeout(() => {
-      pendingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      pendingRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 100);
   }
 
@@ -508,7 +623,9 @@ export default function AdminDashboard() {
   // --------------------------------------------------------
 
   const pendingAssignments = assignments.filter((a) => a.status === "pending");
-  const completedAssignments = assignments.filter((a) => a.status === "completed");
+  const completedAssignments = assignments.filter(
+    (a) => a.status === "completed",
+  );
 
   // --------------------------------------------------------
   // RENDER
@@ -536,7 +653,9 @@ export default function AdminDashboard() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-stone-800 truncate">Church Care</h1>
+                <h1 className="text-base font-bold text-stone-800 truncate">
+                  Church Care
+                </h1>
                 <span className="shrink-0 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                   Admin
                 </span>
@@ -554,14 +673,38 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Tab navigation — horizontally scrollable, no visible scrollbar */}
+        {/* Tab navigation */}
         <div className="max-w-6xl mx-auto px-4 pt-2 pb-3 flex gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <TabButton label="Overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
-          <TabButton label="My Contacts" active={activeTab === "mycontacts"} onClick={() => setActiveTab("mycontacts")} />
-          <TabButton label="Assignments" active={activeTab === "assignments"} onClick={() => setActiveTab("assignments")} />
-          <TabButton label="Members" active={activeTab === "members"} onClick={() => setActiveTab("members")} />
-          <TabButton label="Volunteers" active={activeTab === "volunteers"} onClick={() => setActiveTab("volunteers")} />
-          <TabButton label="History" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
+          <TabButton
+            label="Overview"
+            active={activeTab === "overview"}
+            onClick={() => setActiveTab("overview")}
+          />
+          <TabButton
+            label="My Contacts"
+            active={activeTab === "mycontacts"}
+            onClick={() => setActiveTab("mycontacts")}
+          />
+          <TabButton
+            label="Assignments"
+            active={activeTab === "assignments"}
+            onClick={() => setActiveTab("assignments")}
+          />
+          <TabButton
+            label="Members"
+            active={activeTab === "members"}
+            onClick={() => setActiveTab("members")}
+          />
+          <TabButton
+            label="Volunteers"
+            active={activeTab === "volunteers"}
+            onClick={() => setActiveTab("volunteers")}
+          />
+          <TabButton
+            label="History"
+            active={activeTab === "history"}
+            onClick={() => setActiveTab("history")}
+          />
           <TabButton
             label="Follow-ups"
             active={activeTab === "followups"}
@@ -572,7 +715,9 @@ export default function AdminDashboard() {
             label="Prayer"
             active={activeTab === "prayer"}
             onClick={() => setActiveTab("prayer")}
-            badge={prayerRequests.filter((p) => !p.prayer_request_resolved).length}
+            badge={
+              prayerRequests.filter((p) => !p.prayer_request_resolved).length
+            }
           />
         </div>
       </header>
@@ -585,7 +730,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Pending volunteers alert — shown on all tabs */}
+        {/* Pending volunteers alert */}
         {pendingVolunteers.length > 0 && (
           <div
             onClick={scrollToPending}
@@ -601,11 +746,23 @@ export default function AdminDashboard() {
                     ? "1 volunteer waiting for approval"
                     : `${pendingVolunteers.length} volunteers waiting for approval`}
                 </p>
-                <p className="text-xs text-amber-600">Tap to review and approve</p>
+                <p className="text-xs text-amber-600">
+                  Tap to review and approve
+                </p>
               </div>
             </div>
-            <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg
+              className="w-5 h-5 text-amber-400 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           </div>
         )}
@@ -613,7 +770,9 @@ export default function AdminDashboard() {
         {/* Week selector */}
         {["overview", "assignments", "volunteers"].includes(activeTab) && (
           <div className="mb-6 flex items-center gap-3">
-            <label className="text-sm font-medium text-stone-600 shrink-0">Week of:</label>
+            <label className="text-sm font-medium text-stone-600 shrink-0">
+              Week of:
+            </label>
             <select
               value={selectedWeek}
               onChange={(e) => setSelectedWeek(e.target.value)}
@@ -635,23 +794,45 @@ export default function AdminDashboard() {
         {activeTab === "overview" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard label="Total Assigned" value={assignments.length} color="stone" />
-              <StatCard label="Completed" value={completedAssignments.length} color="green" />
-              <StatCard label="Pending" value={pendingAssignments.length} color="amber" />
-              <StatCard label="Need Follow-up" value={followUps.filter(f => !f.follow_up_resolved).length} color="red" />
+              <StatCard
+                label="Total Assigned"
+                value={assignments.length}
+                color="stone"
+              />
+              <StatCard
+                label="Completed"
+                value={completedAssignments.length}
+                color="green"
+              />
+              <StatCard
+                label="Pending"
+                value={pendingAssignments.length}
+                color="amber"
+              />
+              <StatCard
+                label="Need Follow-up"
+                value={followUps.filter((f) => !f.follow_up_resolved).length}
+                color="red"
+              />
             </div>
 
             {membersNoContact.length > 0 && (
               <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl">
                 <p className="text-sm font-semibold text-orange-800 mb-1">
-                  ⚠️ {membersNoContact.length} member{membersNoContact.length !== 1 ? "s" : ""} have no contact information
+                  ⚠️ {membersNoContact.length} member
+                  {membersNoContact.length !== 1 ? "s" : ""} have no contact
+                  information
                 </p>
                 <p className="text-xs text-orange-600 mb-3">
-                  These members cannot be contacted and are excluded from assignments. Update their records in Planning Center.
+                  These members cannot be contacted and are excluded from
+                  assignments. Update their records in Planning Center.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {membersNoContact.map((m) => (
-                    <span key={m.id} className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">
+                    <span
+                      key={m.id}
+                      className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full"
+                    >
                       {m.first_name} {m.last_name}
                     </span>
                   ))}
@@ -670,23 +851,33 @@ export default function AdminDashboard() {
               <h2 className="text-xl font-bold text-stone-800">My Contacts</h2>
               <p className="text-sm text-stone-500 mt-1">
                 Week of{" "}
-                {new Date(getThisSunday() + "T00:00:00").toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {new Date(getThisSunday() + "T00:00:00").toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                )}
               </p>
 
               {myAssignments.length > 0 && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs text-stone-500 mb-1.5">
                     <span>
-                      {myAssignments.filter((a) => a.status === "completed").length} of {myAssignments.length} contacted
-                      {myAssignments.filter((a) => a.status === "pending").length > 0 &&
+                      {
+                        myAssignments.filter((a) => a.status === "completed")
+                          .length
+                      }{" "}
+                      of {myAssignments.length} contacted
+                      {myAssignments.filter((a) => a.status === "pending")
+                        .length > 0 &&
                         ` · ${myAssignments.filter((a) => a.status === "pending").length} remaining`}
                     </span>
                     {myAssignments.every((a) => a.status === "completed") && (
-                      <span className="text-green-600 font-semibold">All done! 🎉</span>
+                      <span className="text-green-600 font-semibold">
+                        All done! 🎉
+                      </span>
                     )}
                   </div>
                   <div className="w-full bg-stone-100 rounded-full h-2">
@@ -704,13 +895,26 @@ export default function AdminDashboard() {
             {myAssignments.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-8 h-8 text-amber-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-stone-600 font-medium mb-1">No contacts assigned yet this week</h3>
-                <p className="text-stone-400 text-sm">Check back after Sunday when new assignments are generated.</p>
+                <h3 className="text-stone-600 font-medium mb-1">
+                  No contacts assigned yet this week
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Check back after Sunday when new assignments are generated.
+                </p>
               </div>
             ) : (
               <div className="flex flex-col gap-4 max-w-2xl">
@@ -753,7 +957,10 @@ export default function AdminDashboard() {
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-3">
                   {assignments.map((a) => (
-                    <div key={a.id} className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm">
+                    <div
+                      key={a.id}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                    >
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <p className="font-semibold text-stone-800 text-sm">
                           {a.members?.first_name} {a.members?.last_name}
@@ -761,10 +968,15 @@ export default function AdminDashboard() {
                         <StatusBadge status={a.status} />
                       </div>
                       <p className="text-xs text-stone-500">
-                        Volunteer: <span className="text-stone-700 font-medium">{a.profiles?.full_name}</span>
+                        Volunteer:{" "}
+                        <span className="text-stone-700 font-medium">
+                          {a.profiles?.full_name}
+                        </span>
                       </p>
                       {a.completed_at && (
-                        <p className="text-xs text-stone-400 mt-1">{formatDateTime(a.completed_at)}</p>
+                        <p className="text-xs text-stone-400 mt-1">
+                          {formatDateTime(a.completed_at)}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -782,14 +994,23 @@ export default function AdminDashboard() {
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
                         {assignments.map((a) => (
-                          <tr key={a.id} className="hover:bg-amber-50/30 transition-colors">
+                          <tr
+                            key={a.id}
+                            className="hover:bg-amber-50/30 transition-colors"
+                          >
                             <td className="px-4 py-3 text-stone-800 font-medium">
                               {a.members?.first_name} {a.members?.last_name}
                             </td>
-                            <td className="px-4 py-3 text-stone-600">{a.profiles?.full_name}</td>
-                            <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
+                            <td className="px-4 py-3 text-stone-600">
+                              {a.profiles?.full_name}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusBadge status={a.status} />
+                            </td>
                             <td className="px-4 py-3 text-stone-400">
-                              {a.completed_at ? formatDateTime(a.completed_at) : "—"}
+                              {a.completed_at
+                                ? formatDateTime(a.completed_at)
+                                : "—"}
                             </td>
                           </tr>
                         ))}
@@ -807,22 +1028,37 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "members" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">Members with No Contact Info</h2>
+            <h2 className="text-lg font-bold text-stone-800 mb-1">
+              Members with No Contact Info
+            </h2>
             <p className="text-sm text-stone-500 mb-4">
-              These members are excluded from weekly assignments. Update their records in Planning Center and the next daily sync will pick up the changes.
+              These members are excluded from weekly assignments. Update their
+              records in Planning Center and the next daily sync will pick up
+              the changes.
             </p>
 
             {membersNoContact.length === 0 ? (
-              <GreenNotice>✅ All members have contact information on file.</GreenNotice>
+              <GreenNotice>
+                ✅ All members have contact information on file.
+              </GreenNotice>
             ) : (
               <>
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-3">
                   {membersNoContact.map((m) => (
-                    <div key={m.id} className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm">
-                      <p className="font-semibold text-stone-800 text-sm mb-1">{m.first_name} {m.last_name}</p>
-                      <p className="text-xs text-stone-400">No email · No phone</p>
-                      <p className="text-xs text-stone-300 font-mono mt-1">{m.id}</p>
+                    <div
+                      key={m.id}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                    >
+                      <p className="font-semibold text-stone-800 text-sm mb-1">
+                        {m.first_name} {m.last_name}
+                      </p>
+                      <p className="text-xs text-stone-400">
+                        No email · No phone
+                      </p>
+                      <p className="text-xs text-stone-300 font-mono mt-1">
+                        {m.id}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -839,11 +1075,22 @@ export default function AdminDashboard() {
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
                         {membersNoContact.map((m) => (
-                          <tr key={m.id} className="hover:bg-amber-50/30 transition-colors">
-                            <td className="px-4 py-3 text-stone-800 font-medium">{m.first_name} {m.last_name}</td>
-                            <td className="px-4 py-3 text-stone-400 italic">None</td>
-                            <td className="px-4 py-3 text-stone-400 italic">None</td>
-                            <td className="px-4 py-3 text-stone-300 font-mono text-xs">{m.id}</td>
+                          <tr
+                            key={m.id}
+                            className="hover:bg-amber-50/30 transition-colors"
+                          >
+                            <td className="px-4 py-3 text-stone-800 font-medium">
+                              {m.first_name} {m.last_name}
+                            </td>
+                            <td className="px-4 py-3 text-stone-400 italic">
+                              None
+                            </td>
+                            <td className="px-4 py-3 text-stone-400 italic">
+                              None
+                            </td>
+                            <td className="px-4 py-3 text-stone-300 font-mono text-xs">
+                              {m.id}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -862,7 +1109,9 @@ export default function AdminDashboard() {
           <div className="space-y-8">
             {/* Pending approval */}
             <div ref={pendingRef}>
-              <h2 className="text-lg font-bold text-stone-800 mb-4">Pending Approval</h2>
+              <h2 className="text-lg font-bold text-stone-800 mb-4">
+                Pending Approval
+              </h2>
 
               {pendingVolunteers.length === 0 ? (
                 <GreenNotice>✅ No volunteers pending approval.</GreenNotice>
@@ -871,12 +1120,21 @@ export default function AdminDashboard() {
                   {/* Mobile cards */}
                   <div className="sm:hidden space-y-3">
                     {pendingVolunteers.map((v) => (
-                      <div key={v.id} className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm">
+                      <div
+                        key={v.id}
+                        className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="font-semibold text-stone-800 text-sm truncate">{v.full_name}</p>
-                            <p className="text-xs text-stone-500 truncate">{v.email}</p>
-                            <p className="text-xs text-stone-400 mt-1">{formatDateTime(v.created_at)}</p>
+                            <p className="font-semibold text-stone-800 text-sm truncate">
+                              {v.full_name}
+                            </p>
+                            <p className="text-xs text-stone-500 truncate">
+                              {v.email}
+                            </p>
+                            <p className="text-xs text-stone-400 mt-1">
+                              {formatDateTime(v.created_at)}
+                            </p>
                           </div>
                           <button
                             onClick={() => approveVolunteer(v.id)}
@@ -901,10 +1159,19 @@ export default function AdminDashboard() {
                         </TableHeader>
                         <tbody className="divide-y divide-stone-50">
                           {pendingVolunteers.map((v) => (
-                            <tr key={v.id} className="hover:bg-amber-50/30 transition-colors">
-                              <td className="px-4 py-3 text-stone-800 font-medium">{v.full_name}</td>
-                              <td className="px-4 py-3 text-stone-600">{v.email}</td>
-                              <td className="px-4 py-3 text-stone-400">{formatDateTime(v.created_at)}</td>
+                            <tr
+                              key={v.id}
+                              className="hover:bg-amber-50/30 transition-colors"
+                            >
+                              <td className="px-4 py-3 text-stone-800 font-medium">
+                                {v.full_name}
+                              </td>
+                              <td className="px-4 py-3 text-stone-600">
+                                {v.email}
+                              </td>
+                              <td className="px-4 py-3 text-stone-400">
+                                {formatDateTime(v.created_at)}
+                              </td>
                               <td className="px-4 py-3">
                                 <button
                                   onClick={() => approveVolunteer(v.id)}
@@ -925,12 +1192,149 @@ export default function AdminDashboard() {
 
             {/* Active volunteers */}
             <div>
-              <h2 className="text-lg font-bold text-stone-800 mb-1">
-                Volunteer Activity — {formatDate(selectedWeek)}
-              </h2>
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                <h2 className="text-lg font-bold text-stone-800">
+                  Volunteer Activity — {formatDate(selectedWeek)}
+                </h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowAddVolunteer(!showAddVolunteer)}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl transition-colors"
+                  >
+                    + Add Volunteer
+                  </button>
+                  {volunteers.some((v) => v.invite_pending) && (
+                    <button
+                      onClick={sendPendingInvites}
+                      disabled={sendingInvites}
+                      className="px-3 py-1.5 bg-stone-600 hover:bg-stone-700 disabled:bg-stone-300 text-white text-xs font-semibold rounded-xl transition-colors"
+                    >
+                      {sendingInvites
+                        ? "Sending..."
+                        : `Send Invites (${volunteers.filter((v) => v.invite_pending).length})`}
+                    </button>
+                  )}
+                </div>
+              </div>
               <p className="text-sm text-stone-500 mb-4">
-                Volunteers highlighted in red had assignments this week but completed none.
+                Volunteers highlighted in red had assignments this week but
+                completed none.
               </p>
+
+              {/* Add volunteer form */}
+              {showAddVolunteer && (
+                <div className="mb-4 p-4 bg-stone-50 border border-stone-200 rounded-2xl">
+                  <h3 className="text-sm font-semibold text-stone-700 mb-3">
+                    Add New Volunteer
+                  </h3>
+
+                  {addVolunteerError && (
+                    <div className="mb-3 p-2 bg-red-50 border border-red-100 rounded-xl">
+                      <p className="text-red-600 text-xs">
+                        {addVolunteerError}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Volunteer type toggle */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setNewVolunteerType("technical")}
+                      className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-colors ${
+                        newVolunteerType === "technical"
+                          ? "bg-amber-500 text-white border-amber-500"
+                          : "bg-white text-stone-600 border-stone-200 hover:bg-amber-50"
+                      }`}
+                    >
+                      📱 Uses the App
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewVolunteerType("non-technical")}
+                      className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-colors ${
+                        newVolunteerType === "non-technical"
+                          ? "bg-amber-500 text-white border-amber-500"
+                          : "bg-white text-stone-600 border-stone-200 hover:bg-amber-50"
+                      }`}
+                    >
+                      📄 Paper-Based
+                    </button>
+                  </div>
+
+                  <form onSubmit={addVolunteer} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-stone-600 mb-1">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newVolunteerName}
+                        onChange={(e) => setNewVolunteerName(e.target.value)}
+                        placeholder="Jane Smith"
+                        className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                      />
+                    </div>
+
+                    {newVolunteerType === "technical" && (
+                      <div>
+                        <label className="block text-xs font-medium text-stone-600 mb-1">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          value={newVolunteerEmail}
+                          onChange={(e) => setNewVolunteerEmail(e.target.value)}
+                          placeholder="jane@example.com"
+                          className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-medium text-stone-600 mb-1">
+                        Ministry *
+                      </label>
+                      <select
+                        value={newVolunteerMinistry}
+                        onChange={(e) =>
+                          setNewVolunteerMinistry(e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+                      >
+                        <option value="">Select ministry...</option>
+                        <option value="elder">Elder</option>
+                        <option value="deacon">Deacon</option>
+                        <option value="greeter">Greeter</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddVolunteer(false);
+                          setAddVolunteerError("");
+                          setNewVolunteerName("");
+                          setNewVolunteerEmail("");
+                          setNewVolunteerMinistry("");
+                        }}
+                        className="flex-1 py-2 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={addingVolunteer}
+                        className="flex-1 py-2 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
+                      >
+                        {addingVolunteer ? "Adding..." : "Add Volunteer"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               {volunteers.length === 0 ? (
                 <EmptyState message="No active volunteers found." />
@@ -939,19 +1343,51 @@ export default function AdminDashboard() {
                   {/* Mobile cards */}
                   <div className="sm:hidden space-y-3">
                     {volunteers.map((v) => {
-                      const zeroCompletion = v.assigned > 0 && v.completed === 0;
-                      const allDone = v.completed === v.assigned && v.assigned > 0;
+                      const zeroCompletion =
+                        v.assigned > 0 && v.completed === 0;
+                      const allDone =
+                        v.completed === v.assigned && v.assigned > 0;
                       return (
                         <div
                           key={v.id}
                           className={`rounded-2xl border p-4 shadow-sm ${
-                            zeroCompletion ? "bg-red-50 border-red-100" : "bg-white border-stone-100"
+                            zeroCompletion
+                              ? "bg-red-50 border-red-100"
+                              : "bg-white border-stone-100"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <div className="min-w-0">
-                              <p className="font-semibold text-stone-800 text-sm truncate">{v.full_name}</p>
-                              <p className="text-xs text-stone-500 truncate">{v.email}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-semibold text-stone-800 text-sm truncate">
+                                  {v.full_name}
+                                </p>
+                                {v.is_non_technical && (
+                                  <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
+                                    📄 Paper
+                                  </span>
+                                )}
+                                {v.invite_pending && (
+                                  <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                    Invite pending
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-stone-500 mt-0.5">
+                                {v.ministry
+                                  ? v.ministry.charAt(0).toUpperCase() +
+                                    v.ministry.slice(1)
+                                  : "—"}
+                              </p>
+                              <p className="text-xs text-stone-500 truncate">
+                                {v.is_non_technical ? (
+                                  <span className="text-stone-400 italic">
+                                    No email
+                                  </span>
+                                ) : (
+                                  v.email
+                                )}
+                              </p>
                             </div>
                             <button
                               onClick={() => deactivateVolunteer(v.id)}
@@ -964,11 +1400,15 @@ export default function AdminDashboard() {
                             <span className="text-xs text-stone-500">
                               {v.assigned} assigned
                             </span>
-                            <span className={`text-xs font-semibold ${allDone ? "text-green-600" : zeroCompletion ? "text-red-600" : "text-stone-700"}`}>
+                            <span
+                              className={`text-xs font-semibold ${allDone ? "text-green-600" : zeroCompletion ? "text-red-600" : "text-stone-700"}`}
+                            >
                               {v.completed} completed
                             </span>
                             {zeroCompletion && (
-                              <span className="text-xs text-red-500">· No contacts this week</span>
+                              <span className="text-xs text-red-500">
+                                · No contacts this week
+                              </span>
                             )}
                           </div>
                         </div>
@@ -979,9 +1419,10 @@ export default function AdminDashboard() {
                   {/* Desktop table */}
                   <SectionCard className="hidden sm:block">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[560px]">
+                      <table className="w-full text-sm min-w-[640px]">
                         <TableHeader>
                           <Th>Name</Th>
+                          <Th>Ministry</Th>
                           <Th>Email</Th>
                           <Th>Assigned</Th>
                           <Th>Completed</Th>
@@ -989,28 +1430,66 @@ export default function AdminDashboard() {
                         </TableHeader>
                         <tbody className="divide-y divide-stone-50">
                           {volunteers.map((v) => {
-                            const zeroCompletion = v.assigned > 0 && v.completed === 0;
+                            const zeroCompletion =
+                              v.assigned > 0 && v.completed === 0;
                             return (
                               <tr
                                 key={v.id}
-                                className={zeroCompletion ? "bg-red-50" : "hover:bg-amber-50/30 transition-colors"}
+                                className={
+                                  zeroCompletion
+                                    ? "bg-red-50"
+                                    : "hover:bg-amber-50/30 transition-colors"
+                                }
                               >
                                 <td className="px-4 py-3 font-medium text-stone-800">
-                                  {v.full_name}
-                                  {zeroCompletion && (
-                                    <span className="ml-2 text-xs text-red-400 font-normal">No contacts this week</span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {v.full_name}
+                                    {v.is_non_technical && (
+                                      <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
+                                        📄 Paper
+                                      </span>
+                                    )}
+                                    {v.invite_pending && (
+                                      <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                        Invite pending
+                                      </span>
+                                    )}
+                                    {zeroCompletion && (
+                                      <span className="text-xs text-red-500 font-normal">
+                                        No contacts this week
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-stone-500 text-xs">
+                                  {v.ministry
+                                    ? v.ministry.charAt(0).toUpperCase() +
+                                      v.ministry.slice(1)
+                                    : "—"}
+                                </td>
+                                <td className="px-4 py-3 text-stone-600">
+                                  {v.is_non_technical ? (
+                                    <span className="text-stone-400 italic">
+                                      None
+                                    </span>
+                                  ) : (
+                                    v.email
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-stone-600">{v.email}</td>
-                                <td className="px-4 py-3 text-stone-600">{v.assigned}</td>
+                                <td className="px-4 py-3 text-stone-600">
+                                  {v.assigned}
+                                </td>
                                 <td className="px-4 py-3">
-                                  <span className={`font-semibold ${
-                                    v.completed === v.assigned && v.assigned > 0
-                                      ? "text-green-600"
-                                      : zeroCompletion
-                                        ? "text-red-600"
-                                        : "text-stone-600"
-                                  }`}>
+                                  <span
+                                    className={`font-semibold ${
+                                      v.completed === v.assigned &&
+                                      v.assigned > 0
+                                        ? "text-green-600"
+                                        : zeroCompletion
+                                          ? "text-red-600"
+                                          : "text-stone-600"
+                                    }`}
+                                  >
                                     {v.completed}
                                   </span>
                                 </td>
@@ -1040,8 +1519,12 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "history" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">Contact History</h2>
-            <p className="text-sm text-stone-500 mb-4">Most recent 100 contacts across all volunteers.</p>
+            <h2 className="text-lg font-bold text-stone-800 mb-1">
+              Contact History
+            </h2>
+            <p className="text-sm text-stone-500 mb-4">
+              Most recent 100 contacts across all volunteers.
+            </p>
 
             {contactLogs.length === 0 ? (
               <EmptyState message="No contact logs yet." />
@@ -1059,16 +1542,27 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <tbody className="divide-y divide-stone-50">
                       {contactLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-amber-50/30 transition-colors">
+                        <tr
+                          key={log.id}
+                          className="hover:bg-amber-50/30 transition-colors"
+                        >
                           <td className="px-4 py-3 text-stone-800 font-medium whitespace-nowrap">
                             {log.members?.first_name} {log.members?.last_name}
                           </td>
-                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{log.profiles?.full_name}</td>
-                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{formatContactMethod(log.contact_method)}</td>
-                          <td className="px-4 py-3 text-stone-600 max-w-xs">
-                            <p className="whitespace-normal" title={log.notes}>{log.notes}</p>
+                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                            {log.profiles?.full_name}
                           </td>
-                          <td className="px-4 py-3 text-stone-400 whitespace-nowrap">{formatDateTime(log.contacted_at)}</td>
+                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                            {formatContactMethod(log.contact_method)}
+                          </td>
+                          <td className="px-4 py-3 text-stone-600 max-w-xs">
+                            <p className="whitespace-normal" title={log.notes}>
+                              {log.notes}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-stone-400 whitespace-nowrap">
+                            {formatDateTime(log.contacted_at)}
+                          </td>
                           <td className="px-4 py-3">
                             {log.needs_follow_up && (
                               <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
@@ -1091,26 +1585,35 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "followups" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">Members Needing Follow-up</h2>
+            <h2 className="text-lg font-bold text-stone-800 mb-1">
+              Members Needing Follow-up
+            </h2>
             <p className="text-sm text-stone-500 mb-4">
-              These members were flagged by a volunteer as needing additional pastoral attention.
+              These members were flagged by a volunteer as needing additional
+              pastoral attention.
             </p>
 
             {followUps.length === 0 ? (
-              <GreenNotice>✅ No members currently flagged for follow-up.</GreenNotice>
+              <GreenNotice>
+                ✅ No members currently flagged for follow-up.
+              </GreenNotice>
             ) : (
               <>
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-3">
                   {followUps.map((log) => (
-                    <div key={log.id} className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm">
+                    <div
+                      key={log.id}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                    >
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
                           <p className="font-semibold text-stone-800 text-sm">
                             {log.members?.first_name} {log.members?.last_name}
                           </p>
                           <p className="text-xs text-stone-500 mt-0.5">
-                            {formatContactMethod(log.contact_method)} · {log.profiles?.full_name}
+                            {formatContactMethod(log.contact_method)} ·{" "}
+                            {log.profiles?.full_name}
                           </p>
                         </div>
                         {log.follow_up_resolved ? (
@@ -1126,8 +1629,14 @@ export default function AdminDashboard() {
                           </button>
                         )}
                       </div>
-                      {log.notes && <p className="text-xs text-stone-600 leading-relaxed">{log.notes}</p>}
-                      <p className="text-xs text-stone-400 mt-2">{formatDateTime(log.contacted_at)}</p>
+                      {log.notes && (
+                        <p className="text-xs text-stone-600 leading-relaxed">
+                          {log.notes}
+                        </p>
+                      )}
+                      <p className="text-xs text-stone-400 mt-2">
+                        {formatDateTime(log.contacted_at)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -1146,16 +1655,30 @@ export default function AdminDashboard() {
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
                         {followUps.map((log) => (
-                          <tr key={log.id} className="hover:bg-amber-50/30 transition-colors">
+                          <tr
+                            key={log.id}
+                            className="hover:bg-amber-50/30 transition-colors"
+                          >
                             <td className="px-4 py-3 text-stone-800 font-medium whitespace-nowrap">
                               {log.members?.first_name} {log.members?.last_name}
                             </td>
-                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{log.profiles?.full_name}</td>
-                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{formatContactMethod(log.contact_method)}</td>
-                            <td className="px-4 py-3 text-stone-600 max-w-xs">
-                              <p className="whitespace-normal" title={log.notes}>{log.notes}</p>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {log.profiles?.full_name}
                             </td>
-                            <td className="px-4 py-3 text-stone-400 whitespace-nowrap">{formatDateTime(log.contacted_at)}</td>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {formatContactMethod(log.contact_method)}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 max-w-xs">
+                              <p
+                                className="whitespace-normal"
+                                title={log.notes}
+                              >
+                                {log.notes}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 text-stone-400 whitespace-nowrap">
+                              {formatDateTime(log.contacted_at)}
+                            </td>
                             <td className="px-4 py-3">
                               {log.follow_up_resolved ? (
                                 <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
@@ -1186,7 +1709,9 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "prayer" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">Prayer Requests</h2>
+            <h2 className="text-lg font-bold text-stone-800 mb-1">
+              Prayer Requests
+            </h2>
             <p className="text-sm text-stone-500 mb-4">
               Members who have requested prayer from the prayer ministry.
             </p>
@@ -1211,7 +1736,9 @@ export default function AdminDashboard() {
                           <p className="font-semibold text-stone-800 text-sm">
                             {log.members?.first_name} {log.members?.last_name}
                           </p>
-                          <p className="text-xs text-stone-500 mt-0.5">{log.profiles?.full_name}</p>
+                          <p className="text-xs text-stone-500 mt-0.5">
+                            {log.profiles?.full_name}
+                          </p>
                         </div>
                         {log.prayer_request_resolved ? (
                           <span className="shrink-0 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
@@ -1226,8 +1753,14 @@ export default function AdminDashboard() {
                           </button>
                         )}
                       </div>
-                      {log.notes && <p className="text-xs text-stone-600 leading-relaxed">{log.notes}</p>}
-                      <p className="text-xs text-stone-400 mt-2">{formatDateTime(log.contacted_at)}</p>
+                      {log.notes && (
+                        <p className="text-xs text-stone-600 leading-relaxed">
+                          {log.notes}
+                        </p>
+                      )}
+                      <p className="text-xs text-stone-400 mt-2">
+                        {formatDateTime(log.contacted_at)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -1256,11 +1789,20 @@ export default function AdminDashboard() {
                             <td className="px-4 py-3 text-stone-800 font-medium whitespace-nowrap">
                               {log.members?.first_name} {log.members?.last_name}
                             </td>
-                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{log.profiles?.full_name}</td>
-                            <td className="px-4 py-3 text-stone-600 max-w-xs">
-                              <p className="whitespace-normal" title={log.notes}>{log.notes}</p>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {log.profiles?.full_name}
                             </td>
-                            <td className="px-4 py-3 text-stone-400 whitespace-nowrap">{formatDateTime(log.contacted_at)}</td>
+                            <td className="px-4 py-3 text-stone-600 max-w-xs">
+                              <p
+                                className="whitespace-normal"
+                                title={log.notes}
+                              >
+                                {log.notes}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 text-stone-400 whitespace-nowrap">
+                              {formatDateTime(log.contacted_at)}
+                            </td>
                             <td className="px-4 py-3">
                               {log.prayer_request_resolved ? (
                                 <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
