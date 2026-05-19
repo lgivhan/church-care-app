@@ -271,3 +271,14 @@ CREATE POLICY "Admins can update own logs"
 CREATE POLICY "Admins can insert profiles"
   ON profiles FOR INSERT
   WITH CHECK (is_admin());
+
+-- Admins can insert contact logs on behalf of volunteers
+CREATE POLICY "Admins can insert logs on behalf of volunteers"
+  ON contact_logs FOR INSERT
+  WITH CHECK (is_admin());
+
+-- Admins can update contact logs on behalf of volunteers
+CREATE POLICY "Admins can update logs on behalf of volunteers"
+  ON contact_logs FOR UPDATE
+  USING (is_admin())
+  WITH CHECK (is_admin());
