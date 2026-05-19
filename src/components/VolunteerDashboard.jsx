@@ -37,7 +37,26 @@ export default function VolunteerDashboard() {
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload assignments when the tab or window comes back into focus.
+  // loadDashboard only depends on getThisSunday() (stable) and Supabase
+  // auth state, so the stale-closure concern from empty deps does not apply.
+  // Session recovery (JWT rotation) is handled globally by supabaseClient.js.
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") loadDashboard();
+    }
+    function handleFocus() {
+      loadDashboard();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadDashboard() {
     setLoading(true);

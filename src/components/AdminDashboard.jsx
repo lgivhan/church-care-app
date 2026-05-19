@@ -191,9 +191,34 @@ export default function AdminDashboard() {
 
   const pendingRef = useRef(null);
 
+  // Always points to the latest loadAll closure so the visibility/focus
+  // effect below can call it without re-registering event listeners on
+  // every render (which would cause listener leaks).
+  const loadAllRef = useRef(null);
+  loadAllRef.current = loadAll;
+
   useEffect(() => {
     loadAll();
-  }, [selectedWeek]);
+  }, [selectedWeek]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload all dashboard data whenever the tab or window comes back into
+  // focus. The global session recovery in supabaseClient.js runs first
+  // (debounced 200 ms) and rotates the JWT; by the time loadAll fires
+  // its individual queries, the token is already fresh.
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") loadAllRef.current();
+    }
+    function handleFocus() {
+      loadAllRef.current();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []); // stable: always dispatches through loadAllRef
 
   // --------------------------------------------------------
   // DATA LOADING
@@ -420,35 +445,39 @@ export default function AdminDashboard() {
   // --------------------------------------------------------
 
   async function approveVolunteer(id) {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ is_active: true })
-      .eq("id", id);
-
-    if (error) {
-      alert("Failed to approve volunteer. Please try again.");
-      return;
-    }
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: true })
+        .eq("id", id);
+
+      // Throw so the outer catch surfaces the error rather than silently
+      // proceeding to the assignment generation step with a bad state.
+      if (error) throw error;
+
+      // Best-effort: regenerate assignments for the newly approved volunteer.
+      // Wrapped in its own try/catch so a generation failure never blocks
+      // the approval confirmation from refreshing the volunteer list.
+      try {
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json",
+            },
           },
-        },
-      );
+        );
+      } catch (err) {
+        console.warn("Could not auto-generate assignments:", err);
+      }
 
-      const result = await response.json();
-    } catch (err) {
-      console.warn("Could not auto-generate assignments:", err);
+      loadPendingVolunteers();
+      loadVolunteers();
+    } catch {
+      alert("Failed to approve volunteer. Please try again.");
     }
-
-    loadPendingVolunteers();
-    loadVolunteers();
   }
 
   async function deactivateVolunteer(id) {
@@ -458,11 +487,16 @@ export default function AdminDashboard() {
       )
     )
       return;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ is_active: false })
-      .eq("id", id);
-    if (!error) loadVolunteers();
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: false })
+        .eq("id", id);
+      if (error) throw error;
+      loadVolunteers();
+    } catch {
+      alert("Failed to deactivate volunteer. Please try again.");
+    }
   }
 
   async function addVolunteer(e) {
@@ -575,19 +609,29 @@ export default function AdminDashboard() {
   }
 
   async function resolvePrayerRequest(id) {
-    const { error } = await supabase
-      .from("contact_logs")
-      .update({ prayer_request_resolved: true })
-      .eq("id", id);
-    if (!error) loadPrayerRequests();
+    try {
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({ prayer_request_resolved: true })
+        .eq("id", id);
+      if (error) throw error;
+      loadPrayerRequests();
+    } catch {
+      alert("Failed to update prayer request. Please try again.");
+    }
   }
 
   async function resolveFollowUp(id) {
-    const { error } = await supabase
-      .from("contact_logs")
-      .update({ follow_up_resolved: true })
-      .eq("id", id);
-    if (!error) loadFollowUps();
+    try {
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({ follow_up_resolved: true })
+        .eq("id", id);
+      if (error) throw error;
+      loadFollowUps();
+    } catch {
+      alert("Failed to update follow-up. Please try again.");
+    }
   }
 
   async function handleSignOut() {

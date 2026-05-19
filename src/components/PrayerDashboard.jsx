@@ -28,58 +28,70 @@ export default function PrayerDashboard() {
 
   const loadPrayerRequests = useCallback(async () => {
     setLoading(true);
-    setError(""); // Clear previous errors
+    setError("");
+    try {
+      const { data, error } = await supabase
+        .from("contact_logs")
+        .select(
+          `
+          id,
+          notes,
+          contacted_at,
+          prayer_request_resolved,
+          members (first_name, last_name),
+          profiles!contact_logs_volunteer_id_fkey (full_name)
+        `,
+        )
+        .eq("prayer_request", true)
+        .order("contacted_at", { ascending: false });
 
-    const { data, error } = await supabase
-      .from("contact_logs")
-      .select(
-        `
-        id,
-        notes,
-        contacted_at,
-        prayer_request_resolved,
-        members (first_name, last_name),
-        profiles!contact_logs_volunteer_id_fkey (full_name)
-      `,
-      )
-      .eq("prayer_request", true)
-      .order("contacted_at", { ascending: false });
-
-    if (error) {
-      setError("Failed to load prayer requests. Please refresh.");
-      console.error(error);
-    } else {
+      if (error) throw error;
       setPrayerRequests(data ?? []);
+    } catch (err) {
+      setError("Failed to load prayer requests. Please refresh.");
+      console.error(err);
+    } finally {
+      // Always release the loading gate — even if the Supabase client
+      // throws (e.g. network drop after tab restore) rather than returning
+      // a structured { error } object.
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadPrayerRequests();
   }, [loadPrayerRequests]);
 
-  // Refresh data when returning to the app
+  // Reload prayer requests when the tab or window comes back into focus.
+  // Session recovery (JWT rotation) is handled globally by supabaseClient.js;
+  // this effect only refreshes the view so stale data doesn't linger.
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
         loadPrayerRequests();
       }
     }
+    function handleFocus() {
+      loadPrayerRequests();
+    }
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
+    window.addEventListener("focus", handleFocus);
+    return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [loadPrayerRequests]);
 
   async function handleResolve(id) {
-    const { error } = await supabase
-      .from("contact_logs")
-      .update({ prayer_request_resolved: true })
-      .eq("id", id);
-
-    if (!error) {
+    try {
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({ prayer_request_resolved: true })
+        .eq("id", id);
+      if (error) throw error;
       loadPrayerRequests();
-    } else {
-      alert("Failed to update prayer request.");
+    } catch {
+      alert("Failed to update prayer request. Please try again.");
     }
   }
 

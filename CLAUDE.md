@@ -48,6 +48,14 @@ supabase functions serve   # Test Edge Functions locally
 - Unconfirmed or unapproved volunteers see a pending-approval screen rather than an empty dashboard
 - Session uses localStorage persistence with Supabase auto-refresh; a 5-second timeout in ProtectedRoute redirects to login if loading stalls
 
+### Global Session Recovery
+
+`src/lib/supabaseClient.js` installs module-level event listeners (registered once at import time, before any component mounts) that fire on `document visibilitychange` (tab comes to foreground) and `window focus` (app returns from another OS window). Both events are collapsed via a 200 ms debounce to avoid double-fires. On each trigger, `getSession()` is called; if the session is absent or stale, `refreshSession()` rotates the JWT and repairs the realtime socket stream **before** any pending user interaction can fire a request with a stale token.
+
+This addresses a class of "UI freezes after backgrounding" bugs where the browser suspends the JS timer thread during OS sleep or prolonged tab switching, causing Supabase's built-in `autoRefreshToken` to miss its window. The recovery net is centralised here so individual components never need defensive auth logic in their mutation paths.
+
+**Mutation state safety rule:** any component function that sets a loading boolean to `true` must reset it inside a `finally` block — never only in the happy path or catch branch. This ensures the UI unlocks even if a network request throws due to socket termination rather than returning a structured error.
+
 ### Database
 
 Migrations live in `supabase/migrations/`:
