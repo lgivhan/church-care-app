@@ -191,34 +191,9 @@ export default function AdminDashboard() {
 
   const pendingRef = useRef(null);
 
-  // Always points to the latest loadAll closure so the visibility/focus
-  // effect below can call it without re-registering event listeners on
-  // every render (which would cause listener leaks).
-  const loadAllRef = useRef(null);
-  loadAllRef.current = loadAll;
-
   useEffect(() => {
     loadAll();
   }, [selectedWeek]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reload all dashboard data whenever the tab or window comes back into
-  // focus. The global session recovery in supabaseClient.js runs first
-  // (debounced 200 ms) and rotates the JWT; by the time loadAll fires
-  // its individual queries, the token is already fresh.
-  useEffect(() => {
-    function handleVisibility() {
-      if (document.visibilityState === "visible") loadAllRef.current();
-    }
-    function handleFocus() {
-      loadAllRef.current();
-    }
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, []); // stable: always dispatches through loadAllRef
 
   // --------------------------------------------------------
   // DATA LOADING
@@ -389,10 +364,12 @@ export default function AdminDashboard() {
   }
 
   async function loadMyAssignments() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    // Destructure safely: getUser() can return { data: null } on network
+    // error (not just { data: { user: null } }), which would throw a
+    // TypeError and break Promise.all in loadAll().
+    const { data, error: authError } = await supabase.auth.getUser();
+    if (authError || !data?.user) return;
+    const user = data.user;
     setMyUserId(user.id);
 
     const weekStarting = getThisSunday();

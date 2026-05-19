@@ -62,24 +62,16 @@ export default function PrayerDashboard() {
     loadPrayerRequests();
   }, [loadPrayerRequests]);
 
-  // Reload prayer requests when the tab or window comes back into focus.
-  // Session recovery (JWT rotation) is handled globally by supabaseClient.js;
-  // this effect only refreshes the view so stale data doesn't linger.
+  // Refresh data when returning to the app
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
         loadPrayerRequests();
       }
     }
-    function handleFocus() {
-      loadPrayerRequests();
-    }
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-    return () => {
+    return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
   }, [loadPrayerRequests]);
 
   async function handleResolve(id) {
