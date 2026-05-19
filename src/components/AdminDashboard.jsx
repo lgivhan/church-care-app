@@ -13,7 +13,7 @@
 // All queries filter by the selected week where applicable.
 // ============================================================
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase, getAccessToken } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
@@ -189,8 +189,9 @@ export default function AdminDashboard() {
   const [addVolunteerError, setAddVolunteerError] = useState("");
   const [sendingInvites, setSendingInvites] = useState(false);
   const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
-
-  const pendingRef = useRef(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
+  const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
+  const [invitesSentCount, setInvitesSentCount] = useState(null);
 
   useEffect(() => {
     loadAll();
@@ -458,20 +459,34 @@ export default function AdminDashboard() {
     }
   }
 
-  async function deactivateVolunteer(id) {
-    if (
-      !window.confirm(
-        "Are you sure you want to deactivate this volunteer? They will be excluded from future assignments.",
-      )
-    )
-      return;
+  function deactivateVolunteer(id, name) {
+    setDeactivateTarget({ id, name });
+  }
+
+  async function confirmDeactivate() {
+    const { id } = deactivateTarget;
+    setDeactivateTarget(null);
     try {
       const { error } = await supabase
         .from("profiles")
         .update({ is_active: false })
         .eq("id", id);
       if (error) throw error;
-      loadVolunteers();
+      const deactivated = volunteers.find((v) => v.id === id);
+      setVolunteers((prev) => prev.filter((v) => v.id !== id));
+      if (deactivated) {
+        setPendingVolunteers((prev) =>
+          [
+            ...prev,
+            {
+              id: deactivated.id,
+              full_name: deactivated.full_name,
+              email: deactivated.email,
+              created_at: deactivated.created_at,
+            },
+          ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+        );
+      }
     } catch {
       alert("Failed to deactivate volunteer. Please try again.");
     }
@@ -588,12 +603,7 @@ export default function AdminDashboard() {
   }
 
   async function sendPendingInvites() {
-    if (
-      !window.confirm(
-        "Send invite emails to all volunteers with pending invites?",
-      )
-    )
-      return;
+    setShowSendInvitesConfirm(false);
     setSendingInvites(true);
 
     const controller = new AbortController();
@@ -619,10 +629,10 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      alert(
-        `Invites sent successfully to ${data.count} volunteer${data.count !== 1 ? "s" : ""}.`,
+      setInvitesSentCount(data.count);
+      setVolunteers((prev) =>
+        prev.map((v) => ({ ...v, invite_pending: false })),
       );
-      loadVolunteers();
     } catch (err) {
       const message =
         err.name === "AbortError"
@@ -664,17 +674,6 @@ export default function AdminDashboard() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
-  }
-
-  function scrollToPending() {
-    setActiveTab("volunteers");
-    setShowInactiveVolunteers(true);
-    setTimeout(() => {
-      pendingRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
   }
 
   function handleMyComplete(assignment) {
@@ -820,43 +819,6 @@ export default function AdminDashboard() {
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl">
             <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Pending volunteers alert */}
-        {pendingVolunteers.length > 0 && (
-          <div
-            onClick={scrollToPending}
-            className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-                {pendingVolunteers.length}
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-amber-800">
-                  {pendingVolunteers.length === 1
-                    ? "1 volunteer waiting for approval"
-                    : `${pendingVolunteers.length} volunteers waiting for approval`}
-                </p>
-                <p className="text-xs text-amber-600">
-                  Tap to review and approve
-                </p>
-              </div>
-            </div>
-            <svg
-              className="w-5 h-5 text-amber-400 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
           </div>
         )}
 
@@ -1215,7 +1177,7 @@ export default function AdminDashboard() {
                   </button>
                   {volunteers.some((v) => v.invite_pending) && (
                     <button
-                      onClick={sendPendingInvites}
+                      onClick={() => setShowSendInvitesConfirm(true)}
                       disabled={sendingInvites}
                       className="px-3 py-1.5 bg-stone-600 hover:bg-stone-700 disabled:bg-stone-300 text-white text-xs font-semibold rounded-xl transition-colors"
                     >
@@ -1400,7 +1362,9 @@ export default function AdminDashboard() {
                               </p>
                             </div>
                             <button
-                              onClick={() => deactivateVolunteer(v.id)}
+                              onClick={() =>
+                                deactivateVolunteer(v.id, v.full_name)
+                              }
                               className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-500 text-xs font-medium rounded-lg transition-colors"
                             >
                               Deactivate
@@ -1505,7 +1469,9 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <button
-                                    onClick={() => deactivateVolunteer(v.id)}
+                                    onClick={() =>
+                                      deactivateVolunteer(v.id, v.full_name)
+                                    }
                                     className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-600 text-xs font-medium rounded-xl transition-colors"
                                   >
                                     Deactivate
@@ -1523,7 +1489,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Inactive / pending volunteers — collapsible */}
-            <div ref={pendingRef}>
+            <div>
               <button
                 onClick={() => setShowInactiveVolunteers((v) => !v)}
                 className="flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors"
@@ -1946,6 +1912,126 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Deactivate confirmation modal */}
+      {deactivateTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setDeactivateTarget(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Deactivate volunteer?
+              </h2>
+              <p className="text-sm text-stone-500 mb-6">
+                <span className="font-medium text-stone-700">
+                  {deactivateTarget.name}
+                </span>{" "}
+                will be excluded from all future assignments. This can be
+                reversed by re-approving them later.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeactivateTarget(null)}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeactivate}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+                >
+                  Deactivate
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Send invites confirmation modal */}
+      {showSendInvitesConfirm && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setShowSendInvitesConfirm(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+              <div className="text-4xl mb-3">✉️</div>
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Send invite emails?
+              </h2>
+              <p className="text-sm text-stone-500 mb-6">
+                This will email{" "}
+                <span className="font-medium text-stone-700">
+                  {volunteers.filter((v) => v.invite_pending).length} volunteer
+                  {volunteers.filter((v) => v.invite_pending).length !== 1
+                    ? "s"
+                    : ""}
+                </span>{" "}
+                with pending invites so they can set a password and log in.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSendInvitesConfirm(false)}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendPendingInvites}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                >
+                  Send Invites
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Invites sent success modal */}
+      {invitesSentCount !== null && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setInvitesSentCount(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+              <div className="text-4xl mb-3">
+                {invitesSentCount > 0 ? "🚀" : "📭"}
+              </div>
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                {invitesSentCount > 0 ? "Invites sent!" : "Nothing to send"}
+              </h2>
+              <p className="text-sm text-stone-500 mb-6">
+                {invitesSentCount > 0 ? (
+                  <>
+                    Successfully emailed{" "}
+                    <span className="font-medium text-stone-700">
+                      {invitesSentCount} volunteer
+                      {invitesSentCount !== 1 ? "s" : ""}
+                    </span>
+                    . They'll receive a link to set their password and log in.
+                  </>
+                ) : (
+                  "No pending invites were found. All volunteers may have already been invited."
+                )}
+              </p>
+              <button
+                onClick={() => setInvitesSentCount(null)}
+                className="w-full py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

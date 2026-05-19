@@ -39,12 +39,19 @@ export default function ProtectedRoute({ children, requiredRole }) {
         if (session) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("role, is_active, full_name")
+            .select("role, is_active, full_name, invite_pending")
             .eq("id", session.user.id)
             .single();
 
           if (!mounted) return;
           setProfile(profile);
+
+          if (profile?.invite_pending) {
+            supabase
+              .from("profiles")
+              .update({ invite_pending: false })
+              .eq("id", session.user.id);
+          }
         }
       } catch (err) {
         console.error("Session load error:", err);
@@ -74,12 +81,19 @@ export default function ProtectedRoute({ children, requiredRole }) {
         if (session) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("role, is_active, full_name")
+            .select("role, is_active, full_name, invite_pending")
             .eq("id", session.user.id)
             .single();
 
           if (!mounted) return;
           setProfile(profile);
+
+          if (profile?.invite_pending) {
+            supabase
+              .from("profiles")
+              .update({ invite_pending: false })
+              .eq("id", session.user.id);
+          }
         } else {
           setProfile(null);
         }

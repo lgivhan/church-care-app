@@ -4,7 +4,9 @@
 // Sends invite emails to all volunteers where invite_pending = true.
 // Uses Supabase's built-in invite flow which sends a magic link
 // the volunteer clicks to set their password.
-// After sending, marks invite_pending = false on each profile.
+// invite_pending is NOT cleared here — it stays true until the
+// volunteer logs in for the first time (cleared by ProtectedRoute).
+// This allows admins to resend invites as many times as needed.
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -59,12 +61,6 @@ Deno.serve(async (req: Request) => {
         );
         continue;
       }
-
-      // Mark as no longer pending
-      await supabase
-        .from("profiles")
-        .update({ invite_pending: false })
-        .eq("id", profile.id);
 
       sentCount++;
     }
