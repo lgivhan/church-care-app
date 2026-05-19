@@ -54,6 +54,10 @@ supabase functions serve   # Test Edge Functions locally
 
 This addresses a class of "UI freezes after backgrounding" bugs where the browser suspends the JS timer thread during OS sleep or prolonged tab switching, causing Supabase's built-in `autoRefreshToken` to miss its window. The recovery net is centralised here so individual components never need defensive auth logic in their mutation paths.
 
+**Do not add component-level data reloads on `visibilitychange` or `window.focus`.** Both events fire simultaneously when returning to a tab, which triggers concurrent `loadAll()` calls. On a briefly unavailable network (common after OS sleep), this can cause `Promise.all` to reject and render dashboards empty. The session recovery in `supabaseClient.js` is the correct and sufficient fix — components do not need to reload data on focus restore.
+
+**`supabase.auth.getUser()` destructuring rule:** `getUser()` can return `{ data: null, error }` on network failure (not just `{ data: { user: null }, error }`). Never inline-destructure `data.user` — always read `data` and `error` separately and guard with `if (authError || !data?.user) return` before accessing `data.user`. A TypeError from this destructuring will propagate through `Promise.all` and trigger the dashboard error banner.
+
 **Mutation state safety rule:** any component function that sets a loading boolean to `true` must reset it inside a `finally` block — never only in the happy path or catch branch. This ensures the UI unlocks even if a network request throws due to socket termination rather than returning a structured error.
 
 ### Database

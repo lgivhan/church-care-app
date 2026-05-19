@@ -142,9 +142,20 @@ export default function VolunteerDashboard() {
     setEditingLog(null);
   }
 
-  // Refresh dashboard data after a contact is logged or edited
-  function handleSaved() {
-    loadDashboard();
+  function handleSaved({ isEditing, assignmentId, completedAt, log }) {
+    if (!isEditing) {
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.id === assignmentId
+            ? { ...a, status: "completed", completed_at: completedAt }
+            : a,
+        ),
+      );
+    }
+    setContactLogs((prev) => ({
+      ...prev,
+      [assignmentId]: { ...(prev[assignmentId] ?? {}), ...log },
+    }));
   }
 
   async function handleSignOut() {

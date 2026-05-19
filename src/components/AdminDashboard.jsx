@@ -14,7 +14,7 @@
 // ============================================================
 
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, getAccessToken } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -503,60 +503,85 @@ export default function AdminDashboard() {
       return;
     }
 
+    // Raw fetch bypasses supabase.functions.invoke() — which internally
+    // calls getSession() and can block on auth-js's refreshingDeferred
+    // if a background token refresh is in flight. getAccessToken() reads
+    // the stored token directly from localStorage with no network calls
+    // and no interaction with the deferred. AbortController enforces a
+    // hard 15-second ceiling so the button always unlocks.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
     try {
-      if (isTechnical) {
-        const { data, error } = await supabase.functions.invoke(
-          "createVolunteer",
-          {
-            body: {
-              full_name: newVolunteerName.trim(),
-              email: newVolunteerEmail.trim(),
-              ministry: newVolunteerMinistry,
-              is_non_technical: false,
-            },
-          },
-        );
+      const body = isTechnical
+        ? {
+            full_name: newVolunteerName.trim(),
+            email: newVolunteerEmail.trim(),
+            ministry: newVolunteerMinistry,
+            is_non_technical: false,
+          }
+        : {
+            // Non-technical volunteers get a placeholder email they never use.
+            full_name: newVolunteerName.trim(),
+            email: `nontechnical_${crypto.randomUUID()}@placeholder.churchcare`,
+            ministry: newVolunteerMinistry,
+            is_non_technical: true,
+          };
 
-        if (error || data?.error) {
-          throw new Error(
-            error?.message ?? data?.error ?? "Failed to create volunteer",
-          );
-        }
-      } else {
-        // For non-technical volunteers: create a placeholder auth account
-        // using a generated email they'll never use. Routes through the
-        // same Edge Function as technical volunteers but with
-        // is_non_technical = true and invite_pending = false.
-        const { data, error } = await supabase.functions.invoke(
-          "createVolunteer",
-          {
-            body: {
-              full_name: newVolunteerName.trim(),
-              email: `nontechnical_${crypto.randomUUID()}@placeholder.churchcare`,
-              ministry: newVolunteerMinistry,
-              is_non_technical: true,
-            },
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/createVolunteer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
-        );
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        },
+      );
 
-        if (error || data?.error) {
-          throw new Error(
-            error?.message ?? data?.error ?? "Failed to create volunteer",
-          );
-        }
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Request failed (${response.status})`);
       }
+
+      const result = await response.json();
+
+      // Insert directly into state — avoids calling loadVolunteers(), which
+      // goes through supabase.from() → getSession() → refreshingDeferred hang.
+      const newVolunteer = {
+        id: result.user_id,
+        full_name: body.full_name,
+        email: isTechnical ? body.email : null,
+        is_active: true,
+        is_non_technical: !isTechnical,
+        invite_pending: isTechnical,
+        ministry: body.ministry,
+        created_at: new Date().toISOString(),
+        assigned: 0,
+        completed: 0,
+      };
+      setVolunteers((prev) =>
+        [...prev, newVolunteer].sort((a, b) =>
+          (a.full_name ?? "").localeCompare(b.full_name ?? ""),
+        ),
+      );
 
       setNewVolunteerName("");
       setNewVolunteerEmail("");
       setNewVolunteerMinistry("");
       setNewVolunteerType("technical");
       setShowAddVolunteer(false);
-      loadVolunteers();
     } catch (err) {
-      setAddVolunteerError(
-        err.message ?? "Something went wrong. Please try again.",
-      );
+      const message =
+        err.name === "AbortError"
+          ? "Request timed out. Please check your connection and try again."
+          : (err.message ?? "Something went wrong. Please try again.");
+      setAddVolunteerError(message);
     } finally {
+      clearTimeout(timeoutId);
       setAddingVolunteer(false);
     }
   }
@@ -570,17 +595,41 @@ export default function AdminDashboard() {
       return;
     setSendingInvites(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
     try {
-      const { data, error } =
-        await supabase.functions.invoke("sendPendingInvites");
-      if (error || data?.error) throw new Error(error?.message ?? data?.error);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          signal: controller.signal,
+        },
+      );
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Request failed (${response.status})`);
+      }
+
+      const data = await response.json();
       alert(
         `Invites sent successfully to ${data.count} volunteer${data.count !== 1 ? "s" : ""}.`,
       );
       loadVolunteers();
     } catch (err) {
-      alert("Failed to send invites: " + err.message);
+      const message =
+        err.name === "AbortError"
+          ? "Request timed out. Please check your connection and try again."
+          : "Failed to send invites: " + err.message;
+      alert(message);
     } finally {
+      clearTimeout(timeoutId);
       setSendingInvites(false);
     }
   }
@@ -644,8 +693,20 @@ export default function AdminDashboard() {
     setMyEditingLog(null);
   }
 
-  function handleMySaved() {
-    loadMyAssignments();
+  function handleMySaved({ isEditing, assignmentId, completedAt, log }) {
+    if (!isEditing) {
+      setMyAssignments((prev) =>
+        prev.map((a) =>
+          a.id === assignmentId
+            ? { ...a, status: "completed", completed_at: completedAt }
+            : a,
+        ),
+      );
+    }
+    setMyContactLogs((prev) => ({
+      ...prev,
+      [assignmentId]: { ...(prev[assignmentId] ?? {}), ...log },
+    }));
   }
 
   // --------------------------------------------------------

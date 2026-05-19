@@ -91,21 +91,21 @@ export default function ContactModal({
     }, 30000);
 
     try {
+      const logPayload = {
+        notes,
+        needs_follow_up: needsFollowUp,
+        contact_method: contactMethod,
+        prayer_request: prayerRequest,
+      };
+
       if (isEditing) {
         const { error: updateError } = await supabase
           .from("contact_logs")
-          .update({
-            notes,
-            needs_follow_up: needsFollowUp,
-            contact_method: contactMethod,
-            prayer_request: prayerRequest,
-          })
+          .update(logPayload)
           .eq("id", existingLog.id);
 
         if (updateError) throw updateError;
       } else {
-        console.log("A - starting else branch", Date.now());
-
         if (!userId) {
           clearTimeout(timeout);
           setLoading(false);
@@ -115,7 +115,7 @@ export default function ContactModal({
           return;
         }
 
-        console.log("C - about to insert contact_log", Date.now());
+        const contactedAt = new Date().toISOString();
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
@@ -131,23 +131,16 @@ export default function ContactModal({
               member_id: assignment.member_id,
               volunteer_id: userId,
               assignment_id: assignment.id,
-              notes,
-              needs_follow_up: needsFollowUp,
-              contact_method: contactMethod,
-              prayer_request: prayerRequest,
-              contacted_at: new Date().toISOString(),
+              contacted_at: contactedAt,
+              ...logPayload,
             }),
           },
         );
-
-        console.log("D - insert done", response.status, Date.now());
 
         if (!response.ok) {
           const errText = await response.text();
           throw new Error(`Insert failed: ${errText}`);
         }
-
-        console.log("E - about to update assignment", Date.now());
 
         const assignmentResponse = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/assignments?id=eq.${assignment.id}`,
@@ -161,22 +154,42 @@ export default function ContactModal({
             },
             body: JSON.stringify({
               status: "completed",
-              completed_at: new Date().toISOString(),
+              completed_at: contactedAt,
             }),
           },
         );
-
-        console.log("F - update done", assignmentResponse.status, Date.now());
 
         if (!assignmentResponse.ok) {
           const errText = await assignmentResponse.text();
           throw new Error(`Assignment update failed: ${errText}`);
         }
+
+        clearTimeout(timeout);
+        onClose();
+        onSaved({
+          isEditing: false,
+          assignmentId: assignment.id,
+          completedAt: contactedAt,
+          log: {
+            assignment_id: assignment.id,
+            contacted_at: contactedAt,
+            ...logPayload,
+          },
+        });
+        return;
       }
 
       clearTimeout(timeout);
       onClose();
-      onSaved();
+      onSaved({
+        isEditing: true,
+        assignmentId: assignment.id,
+        log: {
+          id: existingLog.id,
+          assignment_id: assignment.id,
+          ...logPayload,
+        },
+      });
     } catch (err) {
       clearTimeout(timeout);
       setError(err.message ?? "Something went wrong. Please try again.");
