@@ -188,6 +188,7 @@ export default function AdminDashboard() {
   const [addingVolunteer, setAddingVolunteer] = useState(false);
   const [addVolunteerError, setAddVolunteerError] = useState("");
   const [sendingInvites, setSendingInvites] = useState(false);
+  const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
 
   const pendingRef = useRef(null);
 
@@ -667,6 +668,7 @@ export default function AdminDashboard() {
 
   function scrollToPending() {
     setActiveTab("volunteers");
+    setShowInactiveVolunteers(true);
     setTimeout(() => {
       pendingRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -1198,89 +1200,6 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "volunteers" && (
           <div className="space-y-8">
-            {/* Pending approval */}
-            <div ref={pendingRef}>
-              <h2 className="text-lg font-bold text-stone-800 mb-4">
-                Pending Approval
-              </h2>
-
-              {pendingVolunteers.length === 0 ? (
-                <GreenNotice>✅ No volunteers pending approval.</GreenNotice>
-              ) : (
-                <>
-                  {/* Mobile cards */}
-                  <div className="sm:hidden space-y-3">
-                    {pendingVolunteers.map((v) => (
-                      <div
-                        key={v.id}
-                        className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-stone-800 text-sm truncate">
-                              {v.full_name}
-                            </p>
-                            <p className="text-xs text-stone-500 truncate">
-                              {v.email}
-                            </p>
-                            <p className="text-xs text-stone-400 mt-1">
-                              {formatDateTime(v.created_at)}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => approveVolunteer(v.id)}
-                            className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-xl transition-colors"
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Desktop table */}
-                  <SectionCard className="hidden sm:block">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[500px]">
-                        <TableHeader>
-                          <Th>Name</Th>
-                          <Th>Email</Th>
-                          <Th>Signed up</Th>
-                          <Th>Action</Th>
-                        </TableHeader>
-                        <tbody className="divide-y divide-stone-50">
-                          {pendingVolunteers.map((v) => (
-                            <tr
-                              key={v.id}
-                              className="hover:bg-amber-50/30 transition-colors"
-                            >
-                              <td className="px-4 py-3 text-stone-800 font-medium">
-                                {v.full_name}
-                              </td>
-                              <td className="px-4 py-3 text-stone-600">
-                                {v.email}
-                              </td>
-                              <td className="px-4 py-3 text-stone-400">
-                                {formatDateTime(v.created_at)}
-                              </td>
-                              <td className="px-4 py-3">
-                                <button
-                                  onClick={() => approveVolunteer(v.id)}
-                                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-xl transition-colors"
-                                >
-                                  Approve
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </SectionCard>
-                </>
-              )}
-            </div>
-
             {/* Active volunteers */}
             <div>
               <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
@@ -1600,6 +1519,114 @@ export default function AdminDashboard() {
                     </div>
                   </SectionCard>
                 </>
+              )}
+            </div>
+
+            {/* Inactive / pending volunteers — collapsible */}
+            <div ref={pendingRef}>
+              <button
+                onClick={() => setShowInactiveVolunteers((v) => !v)}
+                className="flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors"
+              >
+                <svg
+                  className={`w-4 h-4 transition-transform ${showInactiveVolunteers ? "rotate-90" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+                Inactive Volunteers
+                {pendingVolunteers.length > 0 && (
+                  <span className="ml-1 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                    {pendingVolunteers.length} pending approval
+                  </span>
+                )}
+              </button>
+
+              {showInactiveVolunteers && (
+                <div className="mt-4">
+                  {pendingVolunteers.length === 0 ? (
+                    <GreenNotice>✅ No inactive volunteers.</GreenNotice>
+                  ) : (
+                    <>
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-3">
+                        {pendingVolunteers.map((v) => (
+                          <div
+                            key={v.id}
+                            className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-stone-800 text-sm truncate">
+                                  {v.full_name}
+                                </p>
+                                <p className="text-xs text-stone-500 truncate">
+                                  {v.email}
+                                </p>
+                                <p className="text-xs text-stone-400 mt-1">
+                                  {formatDateTime(v.created_at)}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => approveVolunteer(v.id)}
+                                className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-xl transition-colors"
+                              >
+                                Approve
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop table */}
+                      <SectionCard className="hidden sm:block">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm min-w-[500px]">
+                            <TableHeader>
+                              <Th>Name</Th>
+                              <Th>Email</Th>
+                              <Th>Signed up</Th>
+                              <Th>Action</Th>
+                            </TableHeader>
+                            <tbody className="divide-y divide-stone-50">
+                              {pendingVolunteers.map((v) => (
+                                <tr
+                                  key={v.id}
+                                  className="hover:bg-amber-50/30 transition-colors"
+                                >
+                                  <td className="px-4 py-3 text-stone-800 font-medium">
+                                    {v.full_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-stone-600">
+                                    {v.email}
+                                  </td>
+                                  <td className="px-4 py-3 text-stone-400">
+                                    {formatDateTime(v.created_at)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => approveVolunteer(v.id)}
+                                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-xl transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </SectionCard>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
