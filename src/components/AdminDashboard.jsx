@@ -937,7 +937,7 @@ export default function AdminDashboard() {
         {/* TAB: MY CONTACTS                                    */}
         {/* -------------------------------------------------- */}
         {activeTab === "mycontacts" && (
-          <div>
+          <div className="max-w-2xl mx-auto">
             <div className="mb-6">
               <h2 className="text-xl font-bold text-stone-800">My Contacts</h2>
               <p className="text-sm text-stone-500 mt-1">
@@ -1008,7 +1008,7 @@ export default function AdminDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-4 max-w-2xl">
+              <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full">
                 {myAssignments.map((assignment) => (
                   <MemberCard
                     key={assignment.id}
