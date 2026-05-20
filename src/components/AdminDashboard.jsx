@@ -191,6 +191,8 @@ export default function AdminDashboard() {
   const [addVolunteerError, setAddVolunteerError] = useState("");
   const [sendingInvites, setSendingInvites] = useState(false);
   const [sendingInviteTo, setSendingInviteTo] = useState(null);
+  const [volunteerMinistryFilter, setVolunteerMinistryFilter] = useState("");
+  const [volunteerPaperOnly, setVolunteerPaperOnly] = useState(false);
   const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
@@ -887,6 +889,13 @@ export default function AdminDashboard() {
       })
     : assignments;
 
+  const displayedVolunteers = volunteers.filter((v) => {
+    if (volunteerPaperOnly && !v.is_non_technical) return false;
+    if (volunteerMinistryFilter && v.ministry !== volunteerMinistryFilter)
+      return false;
+    return true;
+  });
+
   // --------------------------------------------------------
   // RENDER
   // --------------------------------------------------------
@@ -1439,10 +1448,46 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
-              <p className="text-sm text-stone-500 mb-4">
+              <p className="text-sm text-stone-500 mb-3">
                 Volunteers highlighted in red had assignments this week but
                 completed none.
               </p>
+
+              {/* Volunteer filters */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <select
+                  value={volunteerMinistryFilter}
+                  onChange={(e) => setVolunteerMinistryFilter(e.target.value)}
+                  className="px-3 py-1.5 border border-stone-200 rounded-xl text-xs text-stone-700 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">All ministries</option>
+                  <option value="elder">Elder</option>
+                  <option value="deacon">Deacon</option>
+                  <option value="greeter">Greeter</option>
+                  <option value="other">Other</option>
+                </select>
+                <button
+                  onClick={() => setVolunteerPaperOnly((p) => !p)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                    volunteerPaperOnly
+                      ? "bg-stone-700 text-white border-stone-700"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                  }`}
+                >
+                  📄 Paper only
+                </button>
+                {(volunteerMinistryFilter || volunteerPaperOnly) && (
+                  <button
+                    onClick={() => {
+                      setVolunteerMinistryFilter("");
+                      setVolunteerPaperOnly(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
 
               {/* Add volunteer form */}
               {showAddVolunteer && (
@@ -1568,7 +1613,7 @@ export default function AdminDashboard() {
                 <>
                   {/* Mobile cards */}
                   <div className="sm:hidden space-y-3">
-                    {volunteers.map((v) => {
+                    {displayedVolunteers.map((v) => {
                       const zeroCompletion =
                         v.assigned > 0 && v.completed === 0;
                       const allDone =
@@ -1679,7 +1724,7 @@ export default function AdminDashboard() {
                           <Th>Action</Th>
                         </TableHeader>
                         <tbody className="divide-y divide-stone-50">
-                          {volunteers.map((v) => {
+                          {displayedVolunteers.map((v) => {
                             const zeroCompletion =
                               v.assigned > 0 && v.completed === 0;
                             return (
