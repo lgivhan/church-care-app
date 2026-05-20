@@ -19,6 +19,7 @@ import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 import PrintView from "./PrintView";
+import AdHocContactModal from "./AdHocContactModal";
 
 // ============================================================
 // HELPERS
@@ -195,6 +196,7 @@ export default function AdminDashboard() {
   const [invitesSentCount, setInvitesSentCount] = useState(null);
   const [assignmentSearch, setAssignmentSearch] = useState("");
   const [printNotice, setPrintNotice] = useState("");
+  const [adHocModalOpen, setAdHocModalOpen] = useState(false);
   const [proxyModalOpen, setProxyModalOpen] = useState(false);
   const [proxyAssignment, setProxyAssignment] = useState(null);
   const [proxyVolunteer, setProxyVolunteer] = useState(null);
@@ -1127,6 +1129,12 @@ export default function AdminDashboard() {
                     {printNotice}
                   </span>
                 )}
+                <button
+                  onClick={() => setAdHocModalOpen(true)}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                >
+                  + Log Unassigned Contact
+                </button>
                 <button
                   onClick={() => handlePrint(filteredAssignments)}
                   className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
@@ -2121,6 +2129,20 @@ export default function AdminDashboard() {
           userId={adminUserId}
           onBehalfOf={proxyVolunteer}
           loggedById={adminUserId}
+        />
+      )}
+
+      {/* Ad-hoc contact modal — log a contact with no formal assignment */}
+      {adHocModalOpen && adminUserId && (
+        <AdHocContactModal
+          volunteers={volunteers}
+          selectedWeek={selectedWeek}
+          adminUserId={adminUserId}
+          onClose={() => setAdHocModalOpen(false)}
+          onSaved={() => {
+            setAdHocModalOpen(false);
+            loadContactLogs();
+          }}
         />
       )}
 
