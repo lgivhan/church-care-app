@@ -558,6 +558,12 @@ export default function AdminDashboard() {
             is_non_technical: true,
           };
 
+      const { data: authData } = await supabase.auth.getSession();
+      const token =
+        authData?.session?.access_token ??
+        getAccessToken() ??
+        import.meta.env.VITE_SUPABASE_ANON_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/createVolunteer`,
         {
@@ -565,7 +571,7 @@ export default function AdminDashboard() {
           headers: {
             "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(body),
           signal: controller.signal,
@@ -624,6 +630,12 @@ export default function AdminDashboard() {
     const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token =
+        authData?.session?.access_token ??
+        getAccessToken() ??
+        import.meta.env.VITE_SUPABASE_ANON_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
         {
@@ -631,7 +643,7 @@ export default function AdminDashboard() {
           headers: {
             "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${token}`,
           },
           signal: controller.signal,
         },
