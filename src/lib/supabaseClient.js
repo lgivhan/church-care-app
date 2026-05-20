@@ -118,6 +118,21 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 // HELPERS
 // ============================================================
 
+// Races getSession() against a 3-second timeout so mutations never hang
+// waiting on auth-js's refreshingDeferred. Falls back to the localStorage
+// token if getSession() doesn't resolve in time.
+export async function getTokenSafe() {
+  const sessionPromise = supabase.auth
+    .getSession()
+    .then(({ data }) => data?.session?.access_token ?? null)
+    .catch(() => null);
+  const token = await Promise.race([
+    sessionPromise,
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ]);
+  return token ?? getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+}
+
 // Returns the current access token synchronously from localStorage
 // without making any network calls or acquiring any locks.
 export function getAccessToken() {

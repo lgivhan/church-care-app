@@ -14,7 +14,7 @@
 // ============================================================
 
 import { useEffect, useState } from "react";
-import { supabase, getAccessToken } from "../lib/supabaseClient";
+import { supabase, getAccessToken, getTokenSafe } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -24,21 +24,6 @@ import AdHocContactModal from "./AdHocContactModal";
 // ============================================================
 // HELPERS
 // ============================================================
-
-// getSession() can block indefinitely on auth-js's refreshingDeferred if a
-// background token refresh is in flight. Race it against a 3s timeout so
-// mutations never hang waiting for auth machinery to settle.
-async function getTokenSafe() {
-  const sessionPromise = supabase.auth
-    .getSession()
-    .then(({ data }) => data?.session?.access_token ?? null)
-    .catch(() => null);
-  const token = await Promise.race([
-    sessionPromise,
-    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
-  ]);
-  return token ?? getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";

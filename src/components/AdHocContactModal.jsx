@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, getAccessToken } from "../lib/supabaseClient";
+import { supabase, getTokenSafe } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 
 function getSundaysBetween(earliestWeek) {
@@ -166,19 +166,11 @@ export default function AdHocContactModal({
 
     setLoading(true);
 
-    const timeout = setTimeout(() => {
-      setLoading(false);
-      setError(
-        "The request is taking too long. Please check your connection and try again.",
-      );
-    }, 30000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
-      const { data: authData } = await supabase.auth.getSession();
-      const token =
-        authData?.session?.access_token ??
-        getAccessToken() ??
-        import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = await getTokenSafe();
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
@@ -201,6 +193,7 @@ export default function AdHocContactModal({
             needs_follow_up: needsFollowUp,
             prayer_request: prayerRequest,
           }),
+          signal: controller.signal,
         },
       );
 
@@ -209,12 +202,21 @@ export default function AdHocContactModal({
         throw new Error(`Insert failed: ${errText}`);
       }
 
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       onClose();
       onSaved();
     } catch (err) {
-      clearTimeout(timeout);
-      setError(err.message ?? "Something went wrong. Please try again.");
+      clearTimeout(timeoutId);
+      const time = new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const detail =
+        err.name === "AbortError"
+          ? "Request timed out — the server took too long to respond."
+          : (err.message ?? "Something went wrong.");
+      setError(`${detail} (${time} — screenshot this and send to Lee)`);
     } finally {
       setLoading(false);
     }
