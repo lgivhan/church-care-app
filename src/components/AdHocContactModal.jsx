@@ -76,7 +76,6 @@ export default function AdHocContactModal({
         supabase
           .from("members")
           .select("id, first_name, last_name, email, phone")
-          .or("email.not.is.null,phone.not.is.null")
           .order("last_name", { ascending: true }),
         supabase
           .from("assignments")
@@ -86,7 +85,11 @@ export default function AdHocContactModal({
           .maybeSingle(),
       ]);
 
-      setMembers(membersResult.data ?? []);
+      if (membersResult.error) {
+        setError(`Could not load contacts: ${membersResult.error.message}`);
+      } else {
+        setMembers(membersResult.data ?? []);
+      }
       setMembersLoading(false);
 
       const earliest = earliestResult.data?.week_starting ?? getThisSunday();
