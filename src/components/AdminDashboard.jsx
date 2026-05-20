@@ -624,11 +624,18 @@ export default function AdminDashboard() {
       setNewVolunteerType("technical");
       setShowAddVolunteer(false);
     } catch (err) {
-      const message =
+      const time = new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const detail =
         err.name === "AbortError"
-          ? "Request timed out. Please check your connection and try again."
-          : (err.message ?? "Something went wrong. Please try again.");
-      setAddVolunteerError(message);
+          ? "Request timed out — the server took too long to respond."
+          : (err.message ?? "Something went wrong.");
+      setAddVolunteerError(
+        `${detail} (${time} — screenshot this and send to Lee)`,
+      );
     } finally {
       clearTimeout(timeoutId);
       setAddingVolunteer(false);
@@ -1409,7 +1416,10 @@ export default function AdminDashboard() {
                   </h3>
 
                   {addVolunteerError && (
-                    <div className="mb-3 p-2 bg-red-50 border border-red-100 rounded-xl">
+                    <div className="mb-3 p-3 bg-red-50 border border-red-300 rounded-xl">
+                      <p className="text-red-700 text-sm font-medium mb-0.5">
+                        Something went wrong
+                      </p>
                       <p className="text-red-600 text-xs">
                         {addVolunteerError}
                       </p>
