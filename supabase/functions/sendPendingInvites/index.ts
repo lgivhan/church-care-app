@@ -30,12 +30,21 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Get all profiles with invite_pending = true
-    const { data: pendingProfiles, error: fetchError } = await supabase
+    // Optional: if user_id is provided, send only to that one volunteer
+    const body = await req.json().catch(() => ({}));
+    const targetUserId: string | null = body?.user_id ?? null;
+
+    let query = supabase
       .from("profiles")
       .select("id, email, full_name")
       .eq("invite_pending", true)
       .eq("is_non_technical", false);
+
+    if (targetUserId) {
+      query = query.eq("id", targetUserId);
+    }
+
+    const { data: pendingProfiles, error: fetchError } = await query;
 
     if (fetchError) throw fetchError;
     if (!pendingProfiles || pendingProfiles.length === 0) {

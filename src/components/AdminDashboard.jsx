@@ -14,7 +14,7 @@
 // ============================================================
 
 import { useEffect, useState } from "react";
-import { supabase, getAccessToken, getTokenSafe } from "../lib/supabaseClient";
+import { supabase, getTokenSafe } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -190,6 +190,7 @@ export default function AdminDashboard() {
   const [addingVolunteer, setAddingVolunteer] = useState(false);
   const [addVolunteerError, setAddVolunteerError] = useState("");
   const [sendingInvites, setSendingInvites] = useState(false);
+  const [sendingInviteTo, setSendingInviteTo] = useState(null);
   const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
@@ -678,6 +679,47 @@ export default function AdminDashboard() {
     } finally {
       clearTimeout(timeoutId);
       setSendingInvites(false);
+    }
+  }
+
+  async function sendSingleInvite(volunteerId, volunteerName) {
+    setSendingInviteTo(volunteerId);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      const token = await getTokenSafe();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: volunteerId }),
+          signal: controller.signal,
+        },
+      );
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Request failed (${response.status})`);
+      }
+
+      alert(`Invite sent to ${volunteerName}. Ask them to check their email.`);
+    } catch (err) {
+      const message =
+        err.name === "AbortError"
+          ? "Request timed out. Please check your connection and try again."
+          : "Failed to send invite: " + err.message;
+      alert(message);
+    } finally {
+      clearTimeout(timeoutId);
+      setSendingInviteTo(null);
     }
   }
 
@@ -1578,16 +1620,31 @@ export default function AdminDashboard() {
                                 )}
                               </p>
                             </div>
-                            {v.role !== "admin" && (
-                              <button
-                                onClick={() =>
-                                  deactivateVolunteer(v.id, v.full_name)
-                                }
-                                className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-500 text-xs font-medium rounded-lg transition-colors"
-                              >
-                                Deactivate
-                              </button>
-                            )}
+                            <div className="flex flex-col gap-1 shrink-0">
+                              {v.invite_pending && v.role !== "admin" && (
+                                <button
+                                  onClick={() =>
+                                    sendSingleInvite(v.id, v.full_name)
+                                  }
+                                  disabled={sendingInviteTo === v.id}
+                                  className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 disabled:opacity-50 text-amber-800 text-xs font-medium rounded-lg transition-colors"
+                                >
+                                  {sendingInviteTo === v.id
+                                    ? "Sending..."
+                                    : "Send Invite"}
+                                </button>
+                              )}
+                              {v.role !== "admin" && (
+                                <button
+                                  onClick={() =>
+                                    deactivateVolunteer(v.id, v.full_name)
+                                  }
+                                  className="px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-500 text-xs font-medium rounded-lg transition-colors"
+                                >
+                                  Deactivate
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-3 mt-2">
                             <span className="text-xs text-stone-500">
@@ -1692,16 +1749,31 @@ export default function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                  {v.role !== "admin" && (
-                                    <button
-                                      onClick={() =>
-                                        deactivateVolunteer(v.id, v.full_name)
-                                      }
-                                      className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-600 text-xs font-medium rounded-xl transition-colors"
-                                    >
-                                      Deactivate
-                                    </button>
-                                  )}
+                                  <div className="flex flex-col gap-1">
+                                    {v.invite_pending && v.role !== "admin" && (
+                                      <button
+                                        onClick={() =>
+                                          sendSingleInvite(v.id, v.full_name)
+                                        }
+                                        disabled={sendingInviteTo === v.id}
+                                        className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 disabled:opacity-50 text-amber-800 text-xs font-medium rounded-xl transition-colors"
+                                      >
+                                        {sendingInviteTo === v.id
+                                          ? "Sending..."
+                                          : "Send Invite"}
+                                      </button>
+                                    )}
+                                    {v.role !== "admin" && (
+                                      <button
+                                        onClick={() =>
+                                          deactivateVolunteer(v.id, v.full_name)
+                                        }
+                                        className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-600 text-xs font-medium rounded-xl transition-colors"
+                                      >
+                                        Deactivate
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
