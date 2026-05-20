@@ -43,6 +43,8 @@ export default function ContactModal({
   onClose,
   onSaved,
   userId,
+  onBehalfOf = null,
+  loggedById = null,
 }) {
   const member = assignment.members;
   const isEditing = !!existingLog;
@@ -129,9 +131,10 @@ export default function ContactModal({
             },
             body: JSON.stringify({
               member_id: assignment.member_id,
-              volunteer_id: userId,
+              volunteer_id: onBehalfOf?.id ?? userId,
               assignment_id: assignment.id,
               contacted_at: contactedAt,
+              ...(loggedById ? { logged_by: loggedById } : {}),
               ...logPayload,
             }),
           },
@@ -234,6 +237,16 @@ export default function ContactModal({
               </svg>
             </button>
           </div>
+
+          {/* Proxy logging banner */}
+          {onBehalfOf && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-blue-700 text-sm">
+                Logging on behalf of{" "}
+                <span className="font-medium">{onBehalfOf.full_name}</span>
+              </p>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

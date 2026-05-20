@@ -18,6 +18,7 @@ import { supabase, getAccessToken } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
+import PrintView from "./PrintView";
 
 // ============================================================
 // HELPERS
@@ -192,6 +193,17 @@ export default function AdminDashboard() {
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
   const [invitesSentCount, setInvitesSentCount] = useState(null);
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [printNotice, setPrintNotice] = useState("");
+  const [proxyModalOpen, setProxyModalOpen] = useState(false);
+  const [proxyAssignment, setProxyAssignment] = useState(null);
+  const [proxyVolunteer, setProxyVolunteer] = useState(null);
+  const [proxyExistingLog, setProxyExistingLog] = useState(null);
+  const [adminUserId, setAdminUserId] = useState(null);
+  const [printVolunteers, setPrintVolunteers] = useState([]);
+  const [printAssignmentsByVolunteer, setPrintAssignmentsByVolunteer] =
+    useState({});
+  const [showPrint, setShowPrint] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -244,8 +256,8 @@ export default function AdminDashboard() {
         completed_at,
         caller_id,
         member_id,
-        profiles!assignments_caller_id_fkey (full_name, email),
-        members (first_name, last_name, email, phone)
+        profiles!assignments_caller_id_fkey (full_name, email, ministry, is_non_technical),
+        members (first_name, last_name, email, phone, birthday, membership_type)
       `,
       )
       .eq("week_starting", selectedWeek)
@@ -302,7 +314,8 @@ export default function AdminDashboard() {
         needs_follow_up,
         contact_method,
         members (first_name, last_name),
-        profiles!contact_logs_volunteer_id_fkey (full_name)
+        profiles!contact_logs_volunteer_id_fkey (full_name),
+        logged_by_profile:profiles!contact_logs_logged_by_fkey (full_name)
       `,
       )
       .order("contacted_at", { ascending: false })
@@ -373,6 +386,7 @@ export default function AdminDashboard() {
     if (authError || !data?.user) return;
     const user = data.user;
     setMyUserId(user.id);
+    setAdminUserId(user.id);
 
     const weekStarting = getThisSunday();
 
@@ -671,6 +685,86 @@ export default function AdminDashboard() {
     }
   }
 
+  function handleProxyLog(assignment) {
+    setProxyAssignment(assignment);
+    setProxyVolunteer({
+      id: assignment.caller_id,
+      full_name: assignment.profiles?.full_name ?? "",
+    });
+    setProxyExistingLog(null);
+    setProxyModalOpen(true);
+  }
+
+  async function handleProxyEdit(assignment) {
+    const { data } = await supabase
+      .from("contact_logs")
+      .select(
+        "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
+      )
+      .eq("assignment_id", assignment.id)
+      .single();
+    setProxyAssignment(assignment);
+    setProxyVolunteer({
+      id: assignment.caller_id,
+      full_name: assignment.profiles?.full_name ?? "",
+    });
+    setProxyExistingLog(data ?? null);
+    setProxyModalOpen(true);
+  }
+
+  function handleProxyModalClose() {
+    setProxyModalOpen(false);
+    setProxyAssignment(null);
+    setProxyVolunteer(null);
+    setProxyExistingLog(null);
+  }
+
+  function handleProxySaved({ isEditing, assignmentId, completedAt }) {
+    if (!isEditing) {
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.id === assignmentId
+            ? { ...a, status: "completed", completed_at: completedAt }
+            : a,
+        ),
+      );
+    }
+  }
+
+  function handlePrint(assignmentsToUse) {
+    const volunteerMap = {};
+    const byVolunteer = {};
+    assignmentsToUse.forEach((a) => {
+      if (!volunteerMap[a.caller_id]) {
+        volunteerMap[a.caller_id] = {
+          id: a.caller_id,
+          full_name: a.profiles?.full_name ?? "",
+          ministry: a.profiles?.ministry ?? "",
+        };
+        byVolunteer[a.caller_id] = [];
+      }
+      byVolunteer[a.caller_id].push(a);
+    });
+
+    const vols = Object.values(volunteerMap).sort((a, b) =>
+      a.full_name.localeCompare(b.full_name),
+    );
+
+    if (vols.length === 0) {
+      setPrintNotice("No assignments to print this week.");
+      setTimeout(() => setPrintNotice(""), 4000);
+      return;
+    }
+
+    setPrintVolunteers(vols);
+    setPrintAssignmentsByVolunteer(byVolunteer);
+    setShowPrint(true);
+    setTimeout(() => {
+      window.print();
+      setShowPrint(false);
+    }, 150);
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
@@ -718,6 +812,16 @@ export default function AdminDashboard() {
   const completedAssignments = assignments.filter(
     (a) => a.status === "completed",
   );
+
+  const filteredAssignments = assignmentSearch.trim()
+    ? assignments.filter((a) => {
+        const q = assignmentSearch.toLowerCase();
+        const member =
+          `${a.members?.first_name ?? ""} ${a.members?.last_name ?? ""}`.toLowerCase();
+        const volunteer = (a.profiles?.full_name ?? "").toLowerCase();
+        return member.includes(q) || volunteer.includes(q);
+      })
+    : assignments;
 
   // --------------------------------------------------------
   // RENDER
@@ -1001,17 +1105,59 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "assignments" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-4">
-              Assignments — {formatDate(selectedWeek)}
-            </h2>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-lg font-bold text-stone-800">
+                Assignments — {formatDate(selectedWeek)}
+              </h2>
+              <div className="flex gap-2 flex-wrap items-center">
+                {printNotice && (
+                  <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl">
+                    {printNotice}
+                  </span>
+                )}
+                <button
+                  onClick={() => handlePrint(filteredAssignments)}
+                  className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
+                >
+                  {(() => {
+                    const names = [
+                      ...new Set(
+                        filteredAssignments
+                          .map((a) => a.profiles?.full_name)
+                          .filter(Boolean),
+                      ),
+                    ];
+                    return names.length === 1
+                      ? `🖨 Print ${names[0].split(" ")[0]}'s Sheet`
+                      : "🖨 Print Sheets";
+                  })()}
+                </button>
+              </div>
+            </div>
 
-            {assignments.length === 0 ? (
-              <EmptyState message="No assignments found for this week." />
+            <div className="mb-4">
+              <input
+                type="text"
+                value={assignmentSearch}
+                onChange={(e) => setAssignmentSearch(e.target.value)}
+                placeholder="Search by member or volunteer name..."
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+            </div>
+
+            {filteredAssignments.length === 0 ? (
+              <EmptyState
+                message={
+                  assignmentSearch
+                    ? "No matching assignments."
+                    : "No assignments found for this week."
+                }
+              />
             ) : (
               <>
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-3">
-                  {assignments.map((a) => (
+                  {filteredAssignments.map((a) => (
                     <div
                       key={a.id}
                       className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
@@ -1022,17 +1168,34 @@ export default function AdminDashboard() {
                         </p>
                         <StatusBadge status={a.status} />
                       </div>
-                      <p className="text-xs text-stone-500">
+                      <p className="text-xs text-stone-500 mb-1">
                         Volunteer:{" "}
                         <span className="text-stone-700 font-medium">
                           {a.profiles?.full_name}
                         </span>
                       </p>
                       {a.completed_at && (
-                        <p className="text-xs text-stone-400 mt-1">
+                        <p className="text-xs text-stone-400 mb-2">
                           {formatDateTime(a.completed_at)}
                         </p>
                       )}
+                      <div className="mt-2">
+                        {a.status === "pending" ? (
+                          <button
+                            onClick={() => handleProxyLog(a)}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                          >
+                            Log Contact
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleProxyEdit(a)}
+                            className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                          >
+                            Edit Log
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1040,15 +1203,16 @@ export default function AdminDashboard() {
                 {/* Desktop table */}
                 <SectionCard className="hidden sm:block">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[520px]">
+                    <table className="w-full text-sm min-w-[620px]">
                       <TableHeader>
                         <Th>Member</Th>
                         <Th>Volunteer</Th>
                         <Th>Status</Th>
                         <Th>Completed</Th>
+                        <Th>Action</Th>
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
-                        {assignments.map((a) => (
+                        {filteredAssignments.map((a) => (
                           <tr
                             key={a.id}
                             className="hover:bg-amber-50/30 transition-colors"
@@ -1066,6 +1230,23 @@ export default function AdminDashboard() {
                               {a.completed_at
                                 ? formatDateTime(a.completed_at)
                                 : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {a.status === "pending" ? (
+                                <button
+                                  onClick={() => handleProxyLog(a)}
+                                  className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                                >
+                                  Log Contact
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleProxyEdit(a)}
+                                  className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                                >
+                                  Edit Log
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1635,6 +1816,11 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
                             {log.profiles?.full_name}
+                            {log.logged_by_profile?.full_name && (
+                              <span className="block text-xs text-stone-400">
+                                via {log.logged_by_profile.full_name}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
                             {formatContactMethod(log.contact_method)}
@@ -1912,6 +2098,28 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Proxy contact modal — admin logs on behalf of a volunteer */}
+      {proxyModalOpen && proxyAssignment && (
+        <ContactModal
+          assignment={proxyAssignment}
+          existingLog={proxyExistingLog}
+          onClose={handleProxyModalClose}
+          onSaved={handleProxySaved}
+          userId={adminUserId}
+          onBehalfOf={proxyVolunteer}
+          loggedById={adminUserId}
+        />
+      )}
+
+      {/* Print view — portal-rendered, only visible during window.print() */}
+      {showPrint && (
+        <PrintView
+          volunteers={printVolunteers}
+          assignmentsByVolunteer={printAssignmentsByVolunteer}
+          weekStarting={selectedWeek}
+        />
+      )}
 
       {/* Deactivate confirmation modal */}
       {deactivateTarget && (
