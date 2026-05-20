@@ -294,13 +294,22 @@ export default function AdminDashboard() {
 
     if (!profileData) return setVolunteers([]);
 
+    // If someone has both a volunteer and admin profile (e.g. was added as a
+    // volunteer before being promoted), keep only the admin entry.
+    const seen = new Map();
+    for (const p of profileData) {
+      const key = p.email || p.id;
+      if (!seen.has(key) || p.role === "admin") seen.set(key, p);
+    }
+    const dedupedProfiles = [...seen.values()];
+
     const { data: assignmentData } = await supabase
       .from("assignments")
       .select("caller_id, status")
       .eq("week_starting", selectedWeek);
 
     const statsMap = {};
-    profileData.forEach((p) => {
+    dedupedProfiles.forEach((p) => {
       statsMap[p.id] = { assigned: 0, completed: 0 };
     });
 
@@ -312,7 +321,7 @@ export default function AdminDashboard() {
     });
 
     setVolunteers(
-      profileData.map((p) => ({
+      dedupedProfiles.map((p) => ({
         ...p,
         assigned: statsMap[p.id]?.assigned ?? 0,
         completed: statsMap[p.id]?.completed ?? 0,
