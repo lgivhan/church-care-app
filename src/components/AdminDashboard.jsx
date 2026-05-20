@@ -25,6 +25,21 @@ import AdHocContactModal from "./AdHocContactModal";
 // HELPERS
 // ============================================================
 
+// getSession() can block indefinitely on auth-js's refreshingDeferred if a
+// background token refresh is in flight. Race it against a 3s timeout so
+// mutations never hang waiting for auth machinery to settle.
+async function getTokenSafe() {
+  const sessionPromise = supabase.auth
+    .getSession()
+    .then(({ data }) => data?.session?.access_token ?? null)
+    .catch(() => null);
+  const token = await Promise.race([
+    sessionPromise,
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ]);
+  return token ?? getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -560,11 +575,7 @@ export default function AdminDashboard() {
             is_non_technical: true,
           };
 
-      const { data: authData } = await supabase.auth.getSession();
-      const token =
-        authData?.session?.access_token ??
-        getAccessToken() ??
-        import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = await getTokenSafe();
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/createVolunteer`,
@@ -632,11 +643,7 @@ export default function AdminDashboard() {
     const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
-      const { data: authData } = await supabase.auth.getSession();
-      const token =
-        authData?.session?.access_token ??
-        getAccessToken() ??
-        import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = await getTokenSafe();
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
