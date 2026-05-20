@@ -286,9 +286,9 @@ export default function AdminDashboard() {
     const { data: profileData } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, is_active, is_non_technical, invite_pending, ministry, created_at",
+        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at",
       )
-      .eq("role", "volunteer")
+      .in("role", ["volunteer", "admin"])
       .eq("is_active", true)
       .order("full_name", { ascending: true });
 
@@ -1552,12 +1552,17 @@ export default function AdminDashboard() {
                                 <p className="font-semibold text-stone-800 text-sm truncate">
                                   {v.full_name}
                                 </p>
+                                {v.role === "admin" && (
+                                  <span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                                    Admin
+                                  </span>
+                                )}
                                 {v.is_non_technical && (
                                   <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
                                     📄 Paper
                                   </span>
                                 )}
-                                {v.invite_pending && (
+                                {v.invite_pending && v.role !== "admin" && (
                                   <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                                     Invite pending
                                   </span>
@@ -1579,14 +1584,16 @@ export default function AdminDashboard() {
                                 )}
                               </p>
                             </div>
-                            <button
-                              onClick={() =>
-                                deactivateVolunteer(v.id, v.full_name)
-                              }
-                              className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-500 text-xs font-medium rounded-lg transition-colors"
-                            >
-                              Deactivate
-                            </button>
+                            {v.role !== "admin" && (
+                              <button
+                                onClick={() =>
+                                  deactivateVolunteer(v.id, v.full_name)
+                                }
+                                className="shrink-0 px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-500 text-xs font-medium rounded-lg transition-colors"
+                              >
+                                Deactivate
+                              </button>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-2">
                             <span className="text-xs text-stone-500">
@@ -1636,12 +1643,17 @@ export default function AdminDashboard() {
                                 <td className="px-4 py-3 font-medium text-stone-800">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {v.full_name}
+                                    {v.role === "admin" && (
+                                      <span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                                        Admin
+                                      </span>
+                                    )}
                                     {v.is_non_technical && (
                                       <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
                                         📄 Paper
                                       </span>
                                     )}
-                                    {v.invite_pending && (
+                                    {v.invite_pending && v.role !== "admin" && (
                                       <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                                         Invite pending
                                       </span>
@@ -1686,14 +1698,16 @@ export default function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <button
-                                    onClick={() =>
-                                      deactivateVolunteer(v.id, v.full_name)
-                                    }
-                                    className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-600 text-xs font-medium rounded-xl transition-colors"
-                                  >
-                                    Deactivate
-                                  </button>
+                                  {v.role !== "admin" && (
+                                    <button
+                                      onClick={() =>
+                                        deactivateVolunteer(v.id, v.full_name)
+                                      }
+                                      className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-600 text-xs font-medium rounded-xl transition-colors"
+                                    >
+                                      Deactivate
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );
