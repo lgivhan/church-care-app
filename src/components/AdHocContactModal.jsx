@@ -314,10 +314,10 @@ export default function AdHocContactModal({
                 )}
               </div>
 
-              {/* Member search */}
+              {/* Contact search */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Member
+                  Contact
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 {selectedMember ? (
@@ -345,7 +345,7 @@ export default function AdHocContactModal({
                       onFocus={() => setShowMemberList(true)}
                       placeholder={
                         membersLoading
-                          ? "Loading members..."
+                          ? "Loading contacts..."
                           : "Search by name..."
                       }
                       disabled={membersLoading}
