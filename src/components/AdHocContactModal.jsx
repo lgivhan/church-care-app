@@ -1,26 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { getThisSunday } from "../lib/utils";
-
-function getSundaysBetween(earliestWeek) {
-  const sundays = [];
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const thisSunday = new Date(today);
-  thisSunday.setDate(today.getDate() - dayOfWeek);
-
-  const start = new Date(earliestWeek + "T00:00:00");
-  let cursor = new Date(thisSunday);
-
-  while (cursor >= start) {
-    const year = cursor.getFullYear();
-    const month = String(cursor.getMonth() + 1).padStart(2, "0");
-    const day = String(cursor.getDate()).padStart(2, "0");
-    sundays.push(`${year}-${month}-${day}`);
-    cursor.setDate(cursor.getDate() - 7);
-  }
-  return sundays;
-}
 
 function formatWeekLabel(dateStr) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -64,8 +43,6 @@ export default function AdHocContactModal({
   const [selectedMember, setSelectedMember] = useState(null);
   const [showMemberList, setShowMemberList] = useState(false);
   const [contactMethod, setContactMethod] = useState("");
-  const [contactedAt, setContactedAt] = useState(selectedWeek);
-  const [weekOptions, setWeekOptions] = useState([selectedWeek]);
   const [notes, setNotes] = useState("");
   const [needsFollowUp, setNeedsFollowUp] = useState(false);
   const [prayerRequest, setPrayerRequest] = useState(false);
@@ -75,18 +52,10 @@ export default function AdHocContactModal({
 
   useEffect(() => {
     async function loadData() {
-      const [membersResult, earliestResult] = await Promise.all([
-        supabase
-          .from("members")
-          .select("id, first_name, last_name, email, phone")
-          .order("last_name", { ascending: true }),
-        supabase
-          .from("assignments")
-          .select("week_starting")
-          .order("week_starting", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const membersResult = await supabase
+        .from("members")
+        .select("id, first_name, last_name, email, phone")
+        .order("last_name", { ascending: true });
 
       if (membersResult.error) {
         setError(`Could not load contacts: ${membersResult.error.message}`);
@@ -94,9 +63,6 @@ export default function AdHocContactModal({
         setMembers(membersResult.data ?? []);
       }
       setMembersLoading(false);
-
-      const earliest = earliestResult.data?.week_starting ?? getThisSunday();
-      setWeekOptions(getSundaysBetween(earliest));
     }
     loadData();
   }, []);
@@ -176,7 +142,7 @@ export default function AdHocContactModal({
           member_id: selectedMember.id,
           volunteer_id: volunteerId,
           assignment_id: null,
-          contacted_at: `${contactedAt}T12:00:00.000Z`,
+          contacted_at: `${selectedWeek}T12:00:00.000Z`,
           logged_by: adminUserId,
           notes: notes.trim(),
           contact_method: contactMethod,
@@ -399,18 +365,11 @@ export default function AdHocContactModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Week of contact
                 </label>
-                <select
-                  value={contactedAt}
-                  onChange={(e) => setContactedAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {weekOptions.map((w) => (
-                    <option key={w} value={w}>
-                      {formatWeekLabel(w)}
-                      {w === getThisSunday() ? " (current)" : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+                  <span className="text-sm text-gray-800">
+                    {formatWeekLabel(selectedWeek)}
+                  </span>
+                </div>
               </div>
 
               {/* Notes */}
