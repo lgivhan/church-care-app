@@ -20,6 +20,20 @@ import { getThisSunday } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 
+function sortAssignments(list) {
+  const sorted = [...list].sort(
+    (a, b) =>
+      (a.status === "completed" ? 1 : 0) - (b.status === "completed" ? 1 : 0),
+  );
+  console.log(
+    "[sort] input:",
+    list.map((a) => a.status),
+    "output:",
+    sorted.map((a) => a.status),
+  );
+  return sorted;
+}
+
 export default function VolunteerDashboard() {
   const [profile, setProfile] = useState(null);
   const [assignments, setAssignments] = useState([]);
@@ -91,11 +105,11 @@ export default function VolunteerDashboard() {
         )
         .eq("caller_id", user.id)
         .eq("week_starting", weekStarting)
-        .order("status", { ascending: true }); // pending first, completed last
+        .order("created_at", { ascending: true });
 
       if (assignmentError) throw assignmentError;
 
-      setAssignments(assignmentData ?? []);
+      setAssignments(sortAssignments(assignmentData ?? []));
 
       // Load contact logs for this week's assignments so Edit Notes
       // can pre-fill the modal with existing notes
@@ -145,10 +159,12 @@ export default function VolunteerDashboard() {
   function handleSaved({ isEditing, assignmentId, completedAt, log }) {
     if (!isEditing) {
       setAssignments((prev) =>
-        prev.map((a) =>
-          a.id === assignmentId
-            ? { ...a, status: "completed", completed_at: completedAt }
-            : a,
+        sortAssignments(
+          prev.map((a) =>
+            a.id === assignmentId
+              ? { ...a, status: "completed", completed_at: completedAt }
+              : a,
+          ),
         ),
       );
     }
@@ -273,7 +289,7 @@ export default function VolunteerDashboard() {
               No contacts assigned yet this week
             </h3>
             <p className="text-gray-400 text-sm">
-              Check back after Sunday when new assignments are generated.
+              Check back after Friday when new assignments are generated.
             </p>
           </div>
         )}
@@ -283,7 +299,7 @@ export default function VolunteerDashboard() {
           <div className="flex flex-col gap-4">
             {assignments.map((assignment) => (
               <MemberCard
-                key={assignment.id}
+                key={`${assignment.id}-${assignment.status}`}
                 assignment={assignment}
                 onComplete={handleComplete}
                 onEdit={handleEdit}
