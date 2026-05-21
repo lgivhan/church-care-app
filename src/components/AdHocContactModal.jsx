@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, getTokenSafe } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import { getThisSunday } from "../lib/utils";
 
 function getSundaysBetween(earliestWeek) {
@@ -166,43 +166,23 @@ export default function AdHocContactModal({
 
     setLoading(true);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000);
-
     try {
-      const token = await getTokenSafe();
+      const { error: insertError } = await supabase
+        .from("contact_logs")
+        .insert({
+          member_id: selectedMember.id,
+          volunteer_id: volunteerId,
+          assignment_id: null,
+          contacted_at: `${contactedAt}T12:00:00.000Z`,
+          logged_by: adminUserId,
+          notes: notes.trim(),
+          contact_method: contactMethod,
+          needs_follow_up: needsFollowUp,
+          prayer_request: prayerRequest,
+        });
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${token}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({
-            member_id: selectedMember.id,
-            volunteer_id: volunteerId,
-            assignment_id: null,
-            contacted_at: `${contactedAt}T12:00:00.000Z`,
-            logged_by: adminUserId,
-            notes: notes.trim(),
-            contact_method: contactMethod,
-            needs_follow_up: needsFollowUp,
-            prayer_request: prayerRequest,
-          }),
-          signal: controller.signal,
-        },
-      );
+      if (insertError) throw insertError;
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Insert failed: ${errText}`);
-      }
-
-      clearTimeout(timeoutId);
       onClose();
       onSaved();
     } catch (err) {
