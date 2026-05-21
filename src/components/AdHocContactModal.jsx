@@ -48,12 +48,15 @@ export default function AdHocContactModal({
   volunteers,
   selectedWeek,
   adminUserId,
+  initialVolunteer = null,
   onClose,
   onSaved,
 }) {
-  const [volunteerId, setVolunteerId] = useState("");
-  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
-  const [volunteerSearch, setVolunteerSearch] = useState("");
+  const [volunteerId, setVolunteerId] = useState(initialVolunteer?.id ?? "");
+  const [selectedVolunteer, setSelectedVolunteer] = useState(initialVolunteer);
+  const [volunteerSearch, setVolunteerSearch] = useState(
+    initialVolunteer?.full_name ?? "",
+  );
   const [showVolunteerList, setShowVolunteerList] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);

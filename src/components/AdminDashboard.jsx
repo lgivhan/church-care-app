@@ -1194,29 +1194,24 @@ export default function AdminDashboard() {
                     {printNotice}
                   </span>
                 )}
-                <button
-                  onClick={() => setAdHocModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
-                >
-                  + Log Unassigned Contact
-                </button>
-                <button
-                  onClick={() => handlePrint(filteredAssignments)}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
-                >
-                  {(() => {
-                    const names = [
-                      ...new Set(
-                        filteredAssignments
-                          .map((a) => a.profiles?.full_name)
-                          .filter(Boolean),
-                      ),
-                    ];
-                    return names.length === 1
-                      ? `🖨 Print ${names[0].split(" ")[0]}'s Sheet`
-                      : "🖨 Print Sheets";
-                  })()}
-                </button>
+                {selectedVolunteer && (
+                  <>
+                    <button
+                      onClick={() => setAdHocModalOpen(true)}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                    >
+                      + Log Unassigned Contact for{" "}
+                      {selectedVolunteer.full_name.split(" ")[0]}
+                    </button>
+                    <button
+                      onClick={() => handlePrint(filteredAssignments)}
+                      className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
+                    >
+                      🖨 Print {selectedVolunteer.full_name.split(" ")[0]}'s
+                      Sheet
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -2312,6 +2307,7 @@ export default function AdminDashboard() {
           volunteers={volunteers}
           selectedWeek={selectedWeek}
           adminUserId={adminUserId}
+          initialVolunteer={selectedVolunteer}
           onClose={() => setAdHocModalOpen(false)}
           onSaved={() => {
             setAdHocModalOpen(false);
