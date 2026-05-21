@@ -40,7 +40,7 @@ SELECT cron.schedule(
 
 SELECT cron.schedule(
   'generate-weekly-assignments',  -- job name (unique identifier)
-  '0 8 * * 0',                    -- every Sunday at 8am UTC
+  '0 8 * * 5',                    -- every Friday at 4am EST
   $$
   SELECT net.http_post(
     url    := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/generateWeeklyAssignments',
