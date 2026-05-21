@@ -21,6 +21,13 @@ export function getThisSunday() {
 // Used in MemberCard (volunteer view) and AdminDashboard (admin view).
 // Centralizing here prevents the mapping from getting out of sync.
 // ============================================================
+export function sortAssignments(list) {
+  return [...list].sort(
+    (a, b) =>
+      (a.status === "completed" ? 1 : 0) - (b.status === "completed" ? 1 : 0),
+  );
+}
+
 export function getMembershipLabel(membershipType) {
   if (!membershipType) return null;
 

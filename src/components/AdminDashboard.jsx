@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, getTokenSafe } from "../lib/supabaseClient";
-import { getThisSunday } from "../lib/utils";
+import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 import PrintView from "./PrintView";
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
       .eq("week_starting", weekStarting)
       .order("status", { ascending: true });
 
-    setMyAssignments(assignmentData ?? []);
+    setMyAssignments(sortAssignments(assignmentData ?? []));
 
     if (assignmentData && assignmentData.length > 0) {
       const assignmentIds = assignmentData.map((a) => a.id);
@@ -857,10 +857,12 @@ export default function AdminDashboard() {
   function handleMySaved({ isEditing, assignmentId, completedAt, log }) {
     if (!isEditing) {
       setMyAssignments((prev) =>
-        prev.map((a) =>
-          a.id === assignmentId
-            ? { ...a, status: "completed", completed_at: completedAt }
-            : a,
+        sortAssignments(
+          prev.map((a) =>
+            a.id === assignmentId
+              ? { ...a, status: "completed", completed_at: completedAt }
+              : a,
+          ),
         ),
       );
     }
@@ -1152,7 +1154,7 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full">
                 {myAssignments.map((assignment) => (
                   <MemberCard
-                    key={assignment.id}
+                    key={`${assignment.id}-${assignment.status}`}
                     assignment={assignment}
                     onComplete={handleMyComplete}
                     onEdit={handleMyEdit}

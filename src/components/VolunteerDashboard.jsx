@@ -16,23 +16,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { getThisSunday } from "../lib/utils";
+import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
-
-function sortAssignments(list) {
-  const sorted = [...list].sort(
-    (a, b) =>
-      (a.status === "completed" ? 1 : 0) - (b.status === "completed" ? 1 : 0),
-  );
-  console.log(
-    "[sort] input:",
-    list.map((a) => a.status),
-    "output:",
-    sorted.map((a) => a.status),
-  );
-  return sorted;
-}
 
 export default function VolunteerDashboard() {
   const [profile, setProfile] = useState(null);

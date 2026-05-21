@@ -1,19 +1,10 @@
+import { useState } from "react";
 import { getMembershipLabel } from "../lib/utils.js";
-// ============================================================
-// MemberCard.jsx
-//
-// Displays a single weekly assignment for a volunteer.
-// Shows member contact details and actions.
-//
-// Props:
-//   assignment  — the assignment row joined with member data
-//   onComplete  — callback to open the contact modal
-//   onEdit      — callback to reopen modal with existing notes
-// ============================================================
 
 export default function MemberCard({ assignment, onComplete, onEdit }) {
   const member = assignment.members;
   const isCompleted = assignment.status === "completed";
+  const [expanded, setExpanded] = useState(!isCompleted);
 
   function formatBirthday(dateStr) {
     if (!dateStr) return null;
@@ -27,33 +18,18 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
   const birthday = formatBirthday(member?.birthday);
   const membershipLabel = getMembershipLabel(member?.membership_type);
 
-  return (
-    <div
-      className={`bg-white rounded-2xl border p-5 flex flex-col gap-4 shadow-sm transition-all ${
-        isCompleted ? "border-green-200 bg-green-50" : "border-gray-100"
-      }`}
-    >
-      {/* Member name + completion badge */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-semibold text-gray-800 text-base">
+  // Collapsed view — completed cards only
+  if (isCompleted && !expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full text-left bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm transition-colors hover:bg-green-100"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold text-gray-800 text-sm truncate">
             {member?.first_name} {member?.last_name}
-          </h3>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {/* Membership type badge — only shown if available */}
-            {membershipLabel && (
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${membershipLabel.color}`}
-              >
-                {membershipLabel.label}
-              </span>
-            )}
-            {/* Birthday — only shown if available */}
-            {birthday && <p className="text-xs text-blue-500">🎂 {birthday}</p>}
-          </div>
-        </div>
-        {isCompleted && (
-          <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+          </span>
+          <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
             <svg
               className="w-3 h-3"
               fill="none"
@@ -69,6 +45,68 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
             </svg>
             Contacted
           </span>
+        </div>
+        <svg
+          className="w-4 h-4 text-gray-400 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+    );
+  }
+
+  // Expanded view — pending cards always, completed cards when tapped
+  return (
+    <div
+      className={`bg-white rounded-2xl border p-5 flex flex-col gap-4 shadow-sm transition-all ${
+        isCompleted ? "border-green-200 bg-green-50" : "border-gray-100"
+      }`}
+    >
+      {/* Member name + completion badge */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-gray-800 text-base">
+            {member?.first_name} {member?.last_name}
+          </h3>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {membershipLabel && (
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${membershipLabel.color}`}
+              >
+                {membershipLabel.label}
+              </span>
+            )}
+            {birthday && <p className="text-xs text-blue-500">🎂 {birthday}</p>}
+          </div>
+        </div>
+        {isCompleted && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 px-2.5 py-1 rounded-full transition-colors"
+          >
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            Contacted
+          </button>
         )}
       </div>
 
@@ -87,7 +125,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         )}
       </div>
 
-      {/* Contact Actions (Responsive Grid) */}
+      {/* Contact Actions */}
       {(member?.phone || member?.email) && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {member?.phone && (
@@ -98,7 +136,6 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
               >
                 📞 Call
               </a>
-
               <a
                 href={`sms:${member.phone}`}
                 className="text-center text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg transition-colors"
@@ -107,7 +144,6 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
               </a>
             </>
           )}
-
           {member?.email && (
             <a
               href={`mailto:${member.email}`}
