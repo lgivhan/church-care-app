@@ -20,10 +20,23 @@ import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 
+const CONTACT_METHOD_LABELS = {
+  call: "Phone Call",
+  text: "Text Message",
+  email: "Email",
+  voicemail: "Voicemail",
+  in_person: "In Person",
+};
+
+function getMethodLabel(method) {
+  return CONTACT_METHOD_LABELS[method] ?? method ?? "Unknown";
+}
+
 export default function VolunteerDashboard() {
   const [profile, setProfile] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [contactLogs, setContactLogs] = useState({}); // keyed by assignment_id
+  const [adHocLogs, setAdHocLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -114,6 +127,32 @@ export default function VolunteerDashboard() {
         });
         setContactLogs(logMap);
       }
+
+      const nextWeekStarting = (() => {
+        const d = new Date(weekStarting + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        return d.toISOString();
+      })();
+
+      const { data: adHocData, error: adHocError } = await supabase
+        .from("contact_logs")
+        .select(
+          `
+          id,
+          notes,
+          contact_method,
+          contacted_at,
+          needs_follow_up,
+          members (first_name, last_name)
+        `,
+        )
+        .eq("volunteer_id", user.id)
+        .is("assignment_id", null)
+        .gte("contacted_at", weekStarting + "T00:00:00.000Z")
+        .lt("contacted_at", nextWeekStarting);
+
+      if (adHocError) throw adHocError;
+      setAdHocLogs(adHocData ?? []);
     } catch (err) {
       setError("Failed to load your assignments. Please refresh the page.");
       console.error(err);
@@ -291,6 +330,73 @@ export default function VolunteerDashboard() {
                 onEdit={handleEdit}
               />
             ))}
+          </div>
+        )}
+
+        {/* Ad-hoc contacts logged by coordinator */}
+        {adHocLogs.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-3">
+              <h2 className="text-base font-semibold text-gray-700">
+                Contacts added by your coordinator
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                These were logged on your behalf and are already recorded.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              {adHocLogs.map((log) => {
+                const member = log.members;
+                const contactedDate = new Date(
+                  log.contacted_at,
+                ).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                });
+                return (
+                  <div
+                    key={log.id}
+                    className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3.5 flex flex-col gap-2 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {member?.first_name} {member?.last_name}
+                      </span>
+                      <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        Contacted
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {getMethodLabel(log.contact_method)} &middot;{" "}
+                      {contactedDate}
+                    </p>
+                    {log.notes && (
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {log.notes}
+                      </p>
+                    )}
+                    {log.needs_follow_up && (
+                      <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 w-fit">
+                        Flagged for follow-up
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </main>
