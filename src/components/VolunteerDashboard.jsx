@@ -160,8 +160,8 @@ export default function VolunteerDashboard() {
     }));
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
+  function handleSignOut() {
+    supabase.auth.signOut();
     window.location.replace("/login");
   }
 
