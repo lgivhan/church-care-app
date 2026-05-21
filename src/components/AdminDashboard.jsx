@@ -197,7 +197,9 @@ export default function AdminDashboard() {
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
   const [invitesSentCount, setInvitesSentCount] = useState(null);
-  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [volunteerSearch, setVolunteerSearch] = useState("");
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [showVolunteerDropdown, setShowVolunteerDropdown] = useState(false);
   const [printNotice, setPrintNotice] = useState("");
   const [adHocModalOpen, setAdHocModalOpen] = useState(false);
   const [proxyModalOpen, setProxyModalOpen] = useState(false);
@@ -212,6 +214,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadAll();
+    setVolunteerSearch("");
+    setSelectedVolunteer(null);
   }, [selectedWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --------------------------------------------------------
@@ -881,15 +885,15 @@ export default function AdminDashboard() {
     (a) => a.status === "completed",
   );
 
-  const filteredAssignments = assignmentSearch.trim()
-    ? assignments.filter((a) => {
-        const q = assignmentSearch.toLowerCase();
-        const member =
-          `${a.members?.first_name ?? ""} ${a.members?.last_name ?? ""}`.toLowerCase();
-        const volunteer = (a.profiles?.full_name ?? "").toLowerCase();
-        return member.includes(q) || volunteer.includes(q);
-      })
+  const filteredAssignments = selectedVolunteer
+    ? assignments.filter((a) => a.caller_id === selectedVolunteer.id)
     : assignments;
+
+  const filteredVolunteerOptions = volunteerSearch.trim()
+    ? volunteers.filter((v) =>
+        v.full_name.toLowerCase().includes(volunteerSearch.toLowerCase()),
+      )
+    : volunteers;
 
   const displayedVolunteers = volunteers.filter((v) => {
     if (volunteerPaperOnly && !v.is_non_technical) return false;
@@ -1216,21 +1220,47 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="mb-4">
+            <div className="relative mb-4">
               <input
                 type="text"
-                value={assignmentSearch}
-                onChange={(e) => setAssignmentSearch(e.target.value)}
-                placeholder="Search by member or volunteer name..."
+                value={volunteerSearch}
+                onChange={(e) => {
+                  setVolunteerSearch(e.target.value);
+                  setSelectedVolunteer(null);
+                  setShowVolunteerDropdown(true);
+                }}
+                onFocus={() => setShowVolunteerDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowVolunteerDropdown(false), 150)
+                }
+                placeholder="Volunteer name..."
                 className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
               />
+              {showVolunteerDropdown && filteredVolunteerOptions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredVolunteerOptions.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onMouseDown={() => {
+                        setSelectedVolunteer(v);
+                        setVolunteerSearch(v.full_name);
+                        setShowVolunteerDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 transition-colors font-medium text-stone-800"
+                    >
+                      {v.full_name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {filteredAssignments.length === 0 ? (
               <EmptyState
                 message={
-                  assignmentSearch
-                    ? "No matching assignments."
+                  selectedVolunteer
+                    ? `No assignments found for ${selectedVolunteer.full_name}.`
                     : "No assignments found for this week."
                 }
               />
