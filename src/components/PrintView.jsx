@@ -148,7 +148,9 @@ export default function PrintView({
                       <td>
                         {a.members?.first_name} {a.members?.last_name}
                       </td>
-                      <td>{formatPhone(a.members?.phone)}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {formatPhone(a.members?.phone)}
+                      </td>
                       <td>{a.members?.email ?? "—"}</td>
                       <td></td>
                       <td className="print-notes-cell"></td>
