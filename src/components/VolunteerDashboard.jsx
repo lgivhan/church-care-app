@@ -105,7 +105,7 @@ export default function VolunteerDashboard() {
         )
         .eq("caller_id", user.id)
         .eq("week_starting", weekStarting)
-        .order("created_at", { ascending: true });
+        .order("status", { ascending: true });
 
       if (assignmentError) throw assignmentError;
 
