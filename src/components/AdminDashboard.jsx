@@ -502,12 +502,13 @@ export default function AdminDashboard() {
       // Wrapped in its own try/catch so a generation failure never blocks
       // the approval confirmation from refreshing the volunteer list.
       try {
+        const assignToken = await getTokenSafe();
         await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generateWeeklyAssignments`,
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Authorization: `Bearer ${assignToken}`,
               "Content-Type": "application/json",
             },
           },

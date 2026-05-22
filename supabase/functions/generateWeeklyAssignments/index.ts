@@ -53,6 +53,42 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // --------------------------------------------------------
+    // 2a. Verify caller is an admin or pg_cron (service role).
+    //     pg_cron invocations automatically include the service-role
+    //     key as the Bearer token, so we exempt those. All other
+    //     callers must be authenticated admins.
+    // --------------------------------------------------------
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const callerToken = authHeader.replace("Bearer ", "");
+    if (callerToken !== serviceRoleKey) {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const {
+        data: { user },
+        error: authError,
+      } = await userClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (callerProfile?.role !== "admin") {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // --------------------------------------------------------
     // 3. Call the SQL function that generates assignments.
     //    The function is idempotent — if assignments already
     //    exist for this week it exits early without duplicating.
