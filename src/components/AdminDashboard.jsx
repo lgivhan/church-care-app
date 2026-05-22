@@ -213,6 +213,12 @@ export default function AdminDashboard() {
     useState({});
   const [showPrint, setShowPrint] = useState(false);
 
+  // History tab filters
+  const [historyMemberSearch, setHistoryMemberSearch] = useState("");
+  const [historyVolunteerId, setHistoryVolunteerId] = useState("");
+  const [historyMethod, setHistoryMethod] = useState("");
+  const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
+
   useEffect(() => {
     loadAll();
     setVolunteerSearch("");
@@ -332,13 +338,13 @@ export default function AdminDashboard() {
         contacted_at,
         needs_follow_up,
         contact_method,
+        volunteer_id,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name),
         logged_by_profile:profiles!contact_logs_logged_by_fkey (full_name)
       `,
       )
-      .order("contacted_at", { ascending: false })
-      .limit(100);
+      .order("contacted_at", { ascending: false });
     setContactLogs(data ?? []);
   }
 
@@ -914,6 +920,20 @@ export default function AdminDashboard() {
   const filteredAssignments = selectedVolunteer
     ? assignments.filter((a) => a.caller_id === selectedVolunteer.id)
     : assignments;
+
+  const filteredContactLogs = contactLogs.filter((log) => {
+    if (historyMemberSearch.trim()) {
+      const full =
+        `${log.members?.first_name ?? ""} ${log.members?.last_name ?? ""}`.toLowerCase();
+      if (!full.includes(historyMemberSearch.trim().toLowerCase()))
+        return false;
+    }
+    if (historyVolunteerId && log.volunteer_id !== historyVolunteerId)
+      return false;
+    if (historyMethod && log.contact_method !== historyMethod) return false;
+    if (historyFollowUpOnly && !log.needs_follow_up) return false;
+    return true;
+  });
 
   const filteredVolunteerOptions = volunteerSearch.trim()
     ? volunteers.filter((v) =>
@@ -2074,15 +2094,88 @@ export default function AdminDashboard() {
         {/* -------------------------------------------------- */}
         {activeTab === "history" && (
           <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">
+            <h2 className="text-lg font-bold text-stone-800 mb-4">
               Contact History
             </h2>
+
+            {/* Filter bar */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <input
+                type="text"
+                value={historyMemberSearch}
+                onChange={(e) => setHistoryMemberSearch(e.target.value)}
+                placeholder="Search member..."
+                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              />
+              <select
+                value={historyVolunteerId}
+                onChange={(e) => setHistoryVolunteerId(e.target.value)}
+                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+              >
+                <option value="">All volunteers</option>
+                {volunteers.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.full_name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={historyMethod}
+                onChange={(e) => setHistoryMethod(e.target.value)}
+                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+              >
+                <option value="">All methods</option>
+                <option value="call">Call</option>
+                <option value="text">Text</option>
+                <option value="email">Email</option>
+                <option value="voicemail">Voicemail</option>
+                <option value="in_person">In Person</option>
+              </select>
+              <button
+                onClick={() => setHistoryFollowUpOnly((p) => !p)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  historyFollowUpOnly
+                    ? "bg-stone-700 text-white border-stone-700"
+                    : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                }`}
+              >
+                Follow-up only
+              </button>
+              {(historyMemberSearch ||
+                historyVolunteerId ||
+                historyMethod ||
+                historyFollowUpOnly) && (
+                <button
+                  onClick={() => {
+                    setHistoryMemberSearch("");
+                    setHistoryVolunteerId("");
+                    setHistoryMethod("");
+                    setHistoryFollowUpOnly(false);
+                  }}
+                  className="px-3 py-2.5 rounded-xl text-sm text-stone-400 hover:text-stone-600 transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            {/* Result count */}
             <p className="text-sm text-stone-500 mb-4">
-              Most recent 100 contacts across all volunteers.
+              {filteredContactLogs.length}{" "}
+              {filteredContactLogs.length === 1 ? "contact" : "contacts"}
             </p>
 
-            {contactLogs.length === 0 ? (
-              <EmptyState message="No contact logs yet." />
+            {filteredContactLogs.length === 0 ? (
+              <EmptyState
+                message={
+                  historyMemberSearch ||
+                  historyVolunteerId ||
+                  historyMethod ||
+                  historyFollowUpOnly
+                    ? "No contacts match the current filters."
+                    : "No contact logs yet."
+                }
+              />
             ) : (
               <SectionCard>
                 <div className="overflow-x-auto">
@@ -2096,7 +2189,7 @@ export default function AdminDashboard() {
                       <Th>Follow-up</Th>
                     </TableHeader>
                     <tbody className="divide-y divide-stone-50">
-                      {contactLogs.map((log) => (
+                      {filteredContactLogs.map((log) => (
                         <tr
                           key={log.id}
                           className="hover:bg-amber-50/30 transition-colors"
