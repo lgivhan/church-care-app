@@ -1,21 +1,3 @@
-// ============================================================
-// LoginPage.jsx
-//
-// Single page for both login and signup.
-// - Default view: login form
-// - Toggle: "Don't have an account? Sign up" reveals signup form
-//
-// On login:
-//   - Fetches the user's profile to determine role
-//   - Redirects admin → /admin, volunteer → /dashboard
-//
-// On signup:
-//   - Passes full_name in raw_user_meta_data so the
-//     handle_new_user() trigger can copy it into profiles
-//   - New accounts are role = 'volunteer', is_active = false
-//   - Shows a confirmation message after successful signup
-// ============================================================
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -43,31 +25,13 @@ function HeartIcon({ className }) {
   );
 }
 
-function AppHeader({ subtitle }) {
-  return (
-    <div className="text-center mb-8">
-      <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-200">
-        <HeartIcon className="w-10 h-10 text-white" />
-      </div>
-      <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
-        Church Care
-      </h1>
-      <p className="text-stone-500 text-sm mt-2">{subtitle}</p>
-    </div>
-  );
-}
-
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("login");
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [signupSuccess, setSignupSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -165,45 +129,18 @@ export default function LoginPage() {
     setLoading(false);
   }
 
-  async function handleSignup(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    if (!fullName.trim()) {
-      setError("Please enter your full name.");
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName.trim() },
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSignupSuccess(true);
-    setLoading(false);
-  }
-
   if (isResettingPassword) {
     return (
       <WarmBackground>
-        <AppHeader subtitle="Create a new password" />
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-200">
+            <HeartIcon className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
+            Church Care
+          </h1>
+          <p className="text-stone-500 text-sm mt-2">Create a new password</p>
+        </div>
         <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-8">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
@@ -237,65 +174,19 @@ export default function LoginPage() {
     );
   }
 
-  if (signupSuccess) {
-    return (
-      <WarmBackground>
-        <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-10 text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <svg
-              className="w-8 h-8 text-amber-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-stone-800 mb-2">
-            Almost there!
-          </h2>
-          <p className="text-stone-500 text-sm leading-relaxed mb-3">
-            We sent a confirmation link to{" "}
-            <span className="font-semibold text-stone-700">{email}</span>.
-            Please click it to verify your email address.
-          </p>
-          <p className="text-stone-500 text-sm leading-relaxed mb-8">
-            After confirming your email, a church administrator will approve
-            your account — we'll be in touch soon!
-          </p>
-          <button
-            onClick={() => {
-              setSignupSuccess(false);
-              setMode("login");
-              setEmail("");
-              setPassword("");
-              setConfirmPassword("");
-              setFullName("");
-            }}
-            className="text-sm text-amber-600 hover:text-amber-700 font-medium underline underline-offset-2"
-          >
-            Back to sign in
-          </button>
-        </div>
-        <Tagline />
-      </WarmBackground>
-    );
-  }
-
   return (
     <WarmBackground>
-      <AppHeader
-        subtitle={
-          mode === "login"
-            ? "Welcome back — glad you're here"
-            : "Join us in caring for our community"
-        }
-      />
+      <div className="text-center mb-8">
+        <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-200">
+          <HeartIcon className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
+          Church Care
+        </h1>
+        <p className="text-stone-500 text-sm mt-2">
+          Welcome back — glad you&apos;re here
+        </p>
+      </div>
 
       <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/60 border border-amber-100/50 p-8">
         {error && (
@@ -304,24 +195,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form
-          onSubmit={mode === "login" ? handleLogin : handleSignup}
-          className="space-y-4"
-        >
-          {mode === "signup" && (
-            <div>
-              <label className={labelClass}>Full name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                placeholder="Jane Smith"
-                className={inputClass}
-              />
-            </div>
-          )}
-
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className={labelClass}>Email address</label>
             <input
@@ -341,28 +215,12 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder={mode === "signup" ? "At least 6 characters" : "••••••••"}
-              minLength={6}
+              placeholder="••••••••"
               className={inputClass}
             />
           </div>
 
-          {mode === "signup" && (
-            <div>
-              <label className={labelClass}>Confirm password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                placeholder="Re-enter your password"
-                minLength={6}
-                className={inputClass}
-              />
-            </div>
-          )}
-
-          {mode === "login" && resetSent && (
+          {resetSent && (
             <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
               <p className="text-amber-800 text-sm">
                 Password reset email sent! Check your inbox and follow the link
@@ -371,7 +229,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === "login" && passwordUpdated && (
+          {passwordUpdated && (
             <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
               <p className="text-amber-800 text-sm">
                 Password updated! You can now sign in with your new password.
@@ -379,7 +237,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === "login" && !resetSent && (
+          {!resetSent && (
             <div className="text-right">
               <button
                 type="button"
@@ -396,46 +254,9 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-md shadow-amber-200 mt-2"
           >
-            {loading
-              ? mode === "login"
-                ? "Signing in..."
-                : "Creating account..."
-              : mode === "login"
-                ? "Sign in"
-                : "Create account"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          {mode === "login" ? (
-            <p className="text-sm text-stone-500">
-              Don&apos;t have an account?{" "}
-              <button
-                onClick={() => {
-                  setMode("signup");
-                  setError("");
-                  setConfirmPassword("");
-                }}
-                className="text-amber-600 hover:text-amber-700 font-semibold"
-              >
-                Sign up
-              </button>
-            </p>
-          ) : (
-            <p className="text-sm text-stone-500">
-              Already have an account?{" "}
-              <button
-                onClick={() => {
-                  setMode("login");
-                  setError("");
-                }}
-                className="text-amber-600 hover:text-amber-700 font-semibold"
-              >
-                Sign in
-              </button>
-            </p>
-          )}
-        </div>
       </div>
 
       <Tagline />

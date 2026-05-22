@@ -12,6 +12,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./components/LoginPage";
+import AcceptInvitePage from "./components/AcceptInvitePage";
 import VolunteerDashboard from "./components/VolunteerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -21,8 +22,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public route */}
+        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
         {/* Protected volunteer route */}
         <Route

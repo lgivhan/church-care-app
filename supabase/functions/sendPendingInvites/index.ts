@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
       // Send invite email via Supabase admin
       const { error: inviteError } =
         await supabase.auth.admin.inviteUserByEmail(profile.email, {
-          redirectTo: `${siteUrl}/login`,
+          redirectTo: `${siteUrl}/accept-invite`,
         });
 
       if (inviteError) {
