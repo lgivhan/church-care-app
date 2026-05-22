@@ -9,6 +9,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+function HeartIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
 function formatDateTime(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleString("en-US", {
@@ -100,26 +108,33 @@ export default function PrayerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading prayer requests...</p>
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-500 text-sm">Loading prayer requests...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-gray-800">Prayer Ministry</h1>
-            <p className="text-xs text-gray-500">
-              {openRequests.length} open request
-              {openRequests.length !== 1 ? "s" : ""}
-            </p>
+    <div className="min-h-screen bg-stone-50">
+      <header className="bg-white border-b border-amber-100 sticky top-0 z-10 shadow-sm shadow-amber-50/80">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shrink-0">
+              <HeartIcon className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-stone-800">
+                Prayer Ministry
+              </h1>
+              <p className="text-xs text-stone-400 leading-none mt-0.5">
+                {openRequests.length} open request
+                {openRequests.length !== 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-sm text-stone-400 hover:text-amber-600 transition-colors"
           >
             Sign out
           </button>
@@ -134,12 +149,12 @@ export default function PrayerDashboard() {
         )}
 
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-stone-800">
             Prayer Requests
           </h2>
           <button
             onClick={() => setShowResolved(!showResolved)}
-            className="text-xs text-gray-500 hover:text-gray-700 underline"
+            className="text-xs text-stone-500 hover:text-stone-700 underline"
           >
             {showResolved
               ? "Hide resolved"
@@ -164,15 +179,15 @@ export default function PrayerDashboard() {
                 className={`bg-white rounded-2xl border p-5 shadow-sm ${
                   log.prayer_request_resolved
                     ? "border-green-200 opacity-60"
-                    : "border-gray-100"
+                    : "border-stone-100"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <h3 className="font-semibold text-gray-800">
+                    <h3 className="font-semibold text-stone-800">
                       {log.members?.first_name} {log.members?.last_name}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-stone-400 mt-0.5">
                       Contacted by {log.profiles?.full_name} ·{" "}
                       {formatDateTime(log.contacted_at)}
                     </p>
@@ -184,7 +199,7 @@ export default function PrayerDashboard() {
                   ) : (
                     <button
                       onClick={() => handleResolve(log.id)}
-                      className="shrink-0 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors"
+                      className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
                     >
                       Mark as prayed for
                     </button>
@@ -192,7 +207,7 @@ export default function PrayerDashboard() {
                 </div>
 
                 {log.notes && (
-                  <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-stone-600 leading-relaxed bg-stone-50 rounded-lg p-3">
                     {log.notes}
                   </p>
                 )}

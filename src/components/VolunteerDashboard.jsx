@@ -20,6 +20,14 @@ import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 
+function HeartIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
 const CONTACT_METHOD_LABELS = {
   call: "Phone Call",
   text: "Text Message",
@@ -215,28 +223,35 @@ export default function VolunteerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading your contacts...</p>
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-500 text-sm">Loading your contacts...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-gray-800">Church Care</h1>
-            {profile?.full_name && (
-              <p className="text-xs text-gray-500">
-                Hi, {profile.full_name.split(" ")[0]} 👋
-              </p>
-            )}
+      <header className="bg-white border-b border-amber-100 sticky top-0 z-10 shadow-sm shadow-amber-50/80">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shrink-0">
+              <HeartIcon className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-stone-800">
+                Church Care
+              </h1>
+              {profile?.full_name && (
+                <p className="text-xs text-stone-400 leading-none mt-0.5">
+                  Hi, {profile.full_name.split(" ")[0]} 👋
+                </p>
+              )}
+            </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-sm text-stone-400 hover:text-amber-600 transition-colors"
           >
             Sign out
           </button>
@@ -254,10 +269,10 @@ export default function VolunteerDashboard() {
 
         {/* Week heading + progress */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-stone-800">
             This Week's Contacts
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-stone-500 mt-1">
             Week of{" "}
             {new Date(weekStarting + "T00:00:00").toLocaleDateString("en-US", {
               month: "long",
@@ -269,7 +284,7 @@ export default function VolunteerDashboard() {
           {/* Progress bar — only shown if there are assignments */}
           {assignments.length > 0 && (
             <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <div className="flex items-center justify-between text-xs text-stone-500 mb-1">
                 <span>
                   {completedCount} of {assignments.length} contacted
                   {pendingCount > 0 && ` · ${pendingCount} remaining`}
@@ -280,7 +295,7 @@ export default function VolunteerDashboard() {
                   </span>
                 )}
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
+              <div className="w-full bg-stone-100 rounded-full h-2">
                 <div
                   className="bg-green-500 h-2 rounded-full transition-all duration-500"
                   style={{
@@ -295,9 +310,9 @@ export default function VolunteerDashboard() {
         {/* Empty state */}
         {assignments.length === 0 && (
           <div className="text-center py-16 px-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-8 h-8 text-gray-400"
+                className="w-8 h-8 text-stone-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -310,10 +325,10 @@ export default function VolunteerDashboard() {
                 />
               </svg>
             </div>
-            <h3 className="text-gray-600 font-medium mb-1">
+            <h3 className="text-stone-600 font-medium mb-1">
               No contacts assigned yet this week
             </h3>
-            <p className="text-gray-400 text-sm">
+            <p className="text-stone-400 text-sm">
               Check back after Friday when new assignments are generated.
             </p>
           </div>
@@ -337,10 +352,10 @@ export default function VolunteerDashboard() {
         {adHocLogs.length > 0 && (
           <div className="mt-8">
             <div className="mb-3">
-              <h2 className="text-base font-semibold text-gray-700">
+              <h2 className="text-base font-semibold text-stone-700">
                 Contacts added by your coordinator
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-stone-400 mt-0.5">
                 These were logged on your behalf and are already recorded.
               </p>
             </div>
@@ -359,7 +374,7 @@ export default function VolunteerDashboard() {
                     className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3.5 flex flex-col gap-2 shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-gray-800 text-sm">
+                      <span className="font-semibold text-stone-800 text-sm">
                         {member?.first_name} {member?.last_name}
                       </span>
                       <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
@@ -379,12 +394,12 @@ export default function VolunteerDashboard() {
                         Contacted
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-stone-500">
                       {getMethodLabel(log.contact_method)} &middot;{" "}
                       {contactedDate}
                     </p>
                     {log.notes && (
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <p className="text-sm text-stone-600 leading-relaxed">
                         {log.notes}
                       </p>
                     )}
