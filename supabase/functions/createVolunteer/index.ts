@@ -33,11 +33,9 @@ Deno.serve(async (req: Request) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser();
-    if (authError || !user) {
+    const { data: callerData, error: callerAuthError } =
+      await userClient.auth.getUser();
+    if (callerAuthError || !callerData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -46,7 +44,7 @@ Deno.serve(async (req: Request) => {
     const { data: callerProfile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", callerData.user.id)
       .single();
     if (callerProfile?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
