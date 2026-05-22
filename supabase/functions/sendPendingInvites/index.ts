@@ -36,11 +36,9 @@ Deno.serve(async (req: Request) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser();
-    if (authError || !user) {
+    const { data: callerData, error: callerAuthError } =
+      await userClient.auth.getUser();
+    if (callerAuthError || !callerData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -49,7 +47,7 @@ Deno.serve(async (req: Request) => {
     const { data: callerProfile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", callerData.user.id)
       .single();
     if (callerProfile?.role !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
@@ -85,18 +83,37 @@ Deno.serve(async (req: Request) => {
     let sentCount = 0;
 
     for (const profile of pendingProfiles) {
-      // Send invite email via Supabase admin
+      const redirectTo = `${siteUrl}/accept-invite`;
+
       const { error: inviteError } =
         await supabase.auth.admin.inviteUserByEmail(profile.email, {
-          redirectTo: `${siteUrl}/accept-invite`,
+          redirectTo,
         });
 
       if (inviteError) {
-        console.error(
-          `Failed to invite ${profile.email}:`,
-          inviteError.message,
-        );
-        continue;
+        // inviteUserByEmail fails for users who already clicked a previous
+        // invite link (Supabase marks them as confirmed). Fall back to a
+        // password recovery email, which also lands on /accept-invite and
+        // lets the volunteer set their password.
+        if (inviteError.message.includes("already been registered")) {
+          const { error: resetError } =
+            await supabase.auth.resetPasswordForEmail(profile.email, {
+              redirectTo,
+            });
+          if (resetError) {
+            console.error(
+              `Failed to resend to ${profile.email}:`,
+              resetError.message,
+            );
+            continue;
+          }
+        } else {
+          console.error(
+            `Failed to invite ${profile.email}:`,
+            inviteError.message,
+          );
+          continue;
+        }
       }
 
       sentCount++;

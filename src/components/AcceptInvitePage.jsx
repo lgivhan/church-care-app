@@ -31,7 +31,12 @@ export default function AcceptInvitePage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
+      if (
+        session &&
+        (event === "SIGNED_IN" ||
+          event === "USER_UPDATED" ||
+          event === "PASSWORD_RECOVERY")
+      ) {
         setName(session.user.user_metadata?.full_name ?? "");
         setSessionReady(true);
       }
