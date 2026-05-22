@@ -2159,6 +2159,53 @@ export default function AdminDashboard() {
               )}
             </div>
 
+            {/* Method breakdown */}
+            {filteredContactLogs.length > 0 && (
+              <div className="mb-4 p-4 bg-white border border-stone-100 rounded-2xl shadow-sm">
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">
+                  Contact method breakdown
+                </p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { key: "call", label: "📞 Call" },
+                    { key: "text", label: "💬 Text" },
+                    { key: "email", label: "✉️ Email" },
+                    { key: "voicemail", label: "📱 Voicemail" },
+                    { key: "in_person", label: "🤝 In Person" },
+                  ]
+                    .map(({ key, label }) => ({
+                      key,
+                      label,
+                      count: filteredContactLogs.filter(
+                        (l) => l.contact_method === key,
+                      ).length,
+                    }))
+                    .filter(({ count }) => count > 0)
+                    .map(({ key, label, count }) => {
+                      const pct = Math.round(
+                        (count / filteredContactLogs.length) * 100,
+                      );
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <span className="text-sm text-stone-600 w-28 shrink-0">
+                            {label}
+                          </span>
+                          <div className="flex-1 bg-stone-100 rounded-full h-2">
+                            <div
+                              className="bg-amber-400 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-stone-400 w-16 text-right shrink-0">
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
             {/* Result count */}
             <p className="text-sm text-stone-500 mb-4">
               {filteredContactLogs.length}{" "}
