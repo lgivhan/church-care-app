@@ -26,7 +26,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         className="w-full text-left bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm transition-colors hover:bg-green-100"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-gray-800 text-sm truncate">
+          <span className="font-semibold text-stone-800 text-sm truncate">
             {member?.first_name} {member?.last_name}
           </span>
           <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
@@ -47,7 +47,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
           </span>
         </div>
         <svg
-          className="w-4 h-4 text-gray-400 shrink-0"
+          className="w-4 h-4 text-stone-400 shrink-0"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -67,13 +67,13 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
   return (
     <div
       className={`bg-white rounded-2xl border p-5 flex flex-col gap-4 shadow-sm transition-all ${
-        isCompleted ? "border-green-200 bg-green-50" : "border-gray-100"
+        isCompleted ? "border-green-200 bg-green-50" : "border-stone-100"
       }`}
     >
       {/* Member name + completion badge */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-gray-800 text-base">
+          <h3 className="font-semibold text-stone-800 text-base">
             {member?.first_name} {member?.last_name}
           </h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -113,13 +113,13 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
       {/* Contact Details */}
       <div className="flex flex-col gap-1.5">
         {member?.phone && (
-          <p className="text-sm text-gray-600">{member.phone}</p>
+          <p className="text-sm text-stone-600">{member.phone}</p>
         )}
         {member?.email && (
-          <p className="text-sm text-gray-600 break-all">{member.email}</p>
+          <p className="text-sm text-stone-600 break-all">{member.email}</p>
         )}
         {!member?.phone && !member?.email && (
-          <p className="text-sm text-gray-400 italic">
+          <p className="text-sm text-stone-400 italic">
             No contact details on file
           </p>
         )}
@@ -132,13 +132,13 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
             <>
               <a
                 href={`tel:${member.phone}`}
-                className="text-center text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg transition-colors"
+                className="text-center text-sm font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-lg transition-colors"
               >
                 📞 Call
               </a>
               <a
                 href={`sms:${member.phone}`}
-                className="text-center text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg transition-colors"
+                className="text-center text-sm font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-lg transition-colors"
               >
                 💬 Text
               </a>
@@ -147,7 +147,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
           {member?.email && (
             <a
               href={`mailto:${member.email}`}
-              className="text-center text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg transition-colors"
+              className="text-center text-sm font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-lg transition-colors"
             >
               ✉️ Email
             </a>
@@ -160,14 +160,14 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         {!isCompleted ? (
           <button
             onClick={() => onComplete(assignment)}
-            className="w-full text-center text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg transition-colors"
+            className="w-full text-center text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg transition-colors"
           >
             Complete Contact
           </button>
         ) : (
           <button
             onClick={() => onEdit(assignment)}
-            className="w-full text-center text-sm font-medium bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 py-2.5 rounded-lg transition-colors"
+            className="w-full text-center text-sm font-medium bg-white hover:bg-stone-50 text-stone-600 border border-stone-200 py-2.5 rounded-lg transition-colors"
           >
             Edit Notes
           </button>
