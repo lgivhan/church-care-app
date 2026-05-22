@@ -13,7 +13,7 @@
 // All queries filter by the selected week where applicable.
 // ============================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase, getTokenSafe } from "../lib/supabaseClient";
 import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
@@ -218,6 +218,16 @@ export default function AdminDashboard() {
   const [historyVolunteerId, setHistoryVolunteerId] = useState("");
   const [historyMethod, setHistoryMethod] = useState("");
   const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
+
+  // Toast notifications
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const toastTimerRef = useRef(null);
+
+  function showToast(message, type = "success") {
+    clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  }
 
   useEffect(() => {
     loadAll();
@@ -520,7 +530,7 @@ export default function AdminDashboard() {
       loadPendingVolunteers();
       loadVolunteers();
     } catch {
-      alert("Failed to approve volunteer. Please try again.");
+      showToast("Failed to approve volunteer. Please try again.", "error");
     }
   }
 
@@ -553,7 +563,7 @@ export default function AdminDashboard() {
         );
       }
     } catch {
-      alert("Failed to deactivate volunteer. Please try again.");
+      showToast("Failed to deactivate volunteer. Please try again.", "error");
     }
   }
 
@@ -714,7 +724,7 @@ export default function AdminDashboard() {
         err.name === "AbortError"
           ? "Request timed out. Please check your connection and try again."
           : "Failed to send invites: " + err.message;
-      alert(message);
+      showToast(message, "error");
     } finally {
       clearTimeout(timeoutId);
       setSendingInvites(false);
@@ -749,13 +759,15 @@ export default function AdminDashboard() {
         throw new Error(text || `Request failed (${response.status})`);
       }
 
-      alert(`Invite sent to ${volunteerName}. Ask them to check their email.`);
+      showToast(
+        `Invite sent to ${volunteerName}. Ask them to check their email.`,
+      );
     } catch (err) {
       const message =
         err.name === "AbortError"
           ? "Request timed out. Please check your connection and try again."
           : "Failed to send invite: " + err.message;
-      alert(message);
+      showToast(message, "error");
     } finally {
       clearTimeout(timeoutId);
       setSendingInviteTo(null);
@@ -771,7 +783,7 @@ export default function AdminDashboard() {
       if (error) throw error;
       loadPrayerRequests();
     } catch {
-      alert("Failed to update prayer request. Please try again.");
+      showToast("Failed to update prayer request. Please try again.", "error");
     }
   }
 
@@ -784,7 +796,7 @@ export default function AdminDashboard() {
       if (error) throw error;
       loadFollowUps();
     } catch {
-      alert("Failed to update follow-up. Please try again.");
+      showToast("Failed to update follow-up. Please try again.", "error");
     }
   }
 
@@ -966,6 +978,19 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-50">
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-medium transition-all ${
+            toast.type === "error"
+              ? "bg-red-600 text-white"
+              : "bg-stone-800 text-white"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-amber-100 sticky top-0 z-10 shadow-sm shadow-amber-50/80">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
