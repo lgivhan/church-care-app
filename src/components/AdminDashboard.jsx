@@ -216,6 +216,7 @@ export default function AdminDashboard() {
 
   // Contacts tab
   const [allMembers, setAllMembers] = useState([]);
+  const [contactsSearch, setContactsSearch] = useState("");
   const [contactsTypeFilter, setContactsTypeFilter] = useState("");
   const [contactsSort, setContactsSort] = useState({
     col: "last_contacted",
@@ -1072,9 +1073,16 @@ export default function AdminDashboard() {
   }
 
   const contactsRows = allMembers
-    .filter(
-      (m) => !contactsTypeFilter || m.membership_type === contactsTypeFilter,
-    )
+    .filter((m) => {
+      if (contactsTypeFilter && m.membership_type !== contactsTypeFilter)
+        return false;
+      if (contactsSearch.trim()) {
+        const q = contactsSearch.trim().toLowerCase();
+        if (!`${m.first_name} ${m.last_name}`.toLowerCase().includes(q))
+          return false;
+      }
+      return true;
+    })
     .map((m) => ({
       id: m.id,
       name: `${m.first_name} ${m.last_name}`,
@@ -2186,25 +2194,34 @@ export default function AdminDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 className="text-lg font-bold text-stone-800">All Contacts</h2>
-              <select
-                value={contactsTypeFilter}
-                onChange={(e) => setContactsTypeFilter(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
-              >
-                <option value="">All types</option>
-                {contactTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={contactsSearch}
+                  onChange={(e) => setContactsSearch(e.target.value)}
+                  placeholder="Search by name..."
+                  className="w-full sm:w-48 px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+                <select
+                  value={contactsTypeFilter}
+                  onChange={(e) => setContactsTypeFilter(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+                >
+                  <option value="">All types</option>
+                  {contactTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {contactsRows.length === 0 ? (
               <EmptyState
                 message={
-                  contactsTypeFilter
-                    ? "No contacts match the selected type."
+                  contactsSearch || contactsTypeFilter
+                    ? "No contacts match the current filters."
                     : "No contacts found."
                 }
               />
