@@ -816,23 +816,43 @@ export default function AdminDashboard() {
 
   async function handleProxyEdit(assignment) {
     try {
-      const { data, error } = await supabase
+      const LOG_SELECT =
+        "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request";
+
+      // Primary: look up by assignment_id
+      const { data: byAssignment, error: err1 } = await supabase
         .from("contact_logs")
-        .select(
-          "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
-        )
+        .select(LOG_SELECT)
         .eq("assignment_id", assignment.id)
         .order("contacted_at", { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      if (err1) throw err1;
+
+      let existingLog = byAssignment?.[0] ?? null;
+
+      // Fallback: logs created before assignment_id was reliably stored —
+      // find the most recent log for this member by this volunteer this week.
+      if (!existingLog) {
+        const { data: byMember, error: err2 } = await supabase
+          .from("contact_logs")
+          .select(LOG_SELECT)
+          .eq("member_id", assignment.member_id)
+          .eq("volunteer_id", assignment.caller_id)
+          .gte("contacted_at", assignment.week_starting)
+          .order("contacted_at", { ascending: false })
+          .limit(1);
+
+        if (err2) throw err2;
+        existingLog = byMember?.[0] ?? null;
+      }
 
       setProxyAssignment(assignment);
       setProxyVolunteer({
         id: assignment.caller_id,
         full_name: assignment.profiles?.full_name ?? "",
       });
-      setProxyExistingLog(data?.[0] ?? null);
+      setProxyExistingLog(existingLog);
       setProxyModalOpen(true);
     } catch (err) {
       showToast("Could not load contact log. Please try again.", "error");
