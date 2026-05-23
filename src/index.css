@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Prevent iOS Safari from auto-zooming when a form input is focused.
+   Safari zooms in whenever the focused element has font-size < 16px.
+   Locking to 16px on mobile stops the zoom without disabling user scaling. */
+@media screen and (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
