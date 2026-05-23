@@ -826,33 +826,19 @@ export default function AdminDashboard() {
         Accept: "application/json",
       };
 
-      // Primary: look up by assignment_id
-      const r1 = await fetch(
+      const res = await fetch(
         `${base}?select=${select}&assignment_id=eq.${assignment.id}&order=contacted_at.desc&limit=1`,
         { headers },
       );
-      if (!r1.ok) throw new Error(await r1.text());
-      const byAssignment = await r1.json();
-
-      let existingLog = byAssignment?.[0] ?? null;
-
-      // Fallback: logs without assignment_id — find by member + volunteer + week
-      if (!existingLog) {
-        const r2 = await fetch(
-          `${base}?select=${select}&member_id=eq.${assignment.member_id}&volunteer_id=eq.${assignment.caller_id}&contacted_at=gte.${assignment.week_starting}&order=contacted_at.desc&limit=1`,
-          { headers },
-        );
-        if (!r2.ok) throw new Error(await r2.text());
-        const byMember = await r2.json();
-        existingLog = byMember?.[0] ?? null;
-      }
+      if (!res.ok) throw new Error(await res.text());
+      const logs = await res.json();
 
       setProxyAssignment(assignment);
       setProxyVolunteer({
         id: assignment.caller_id,
         full_name: assignment.profiles?.full_name ?? "",
       });
-      setProxyExistingLog(existingLog);
+      setProxyExistingLog(logs[0] ?? null);
       setProxyModalOpen(true);
     } catch (err) {
       showToast("Could not load contact log. Please try again.", "error");
