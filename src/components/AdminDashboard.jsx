@@ -1056,12 +1056,7 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab("assignments")}
           />
           <TabButton
-            label="Members"
-            active={activeTab === "members"}
-            onClick={() => setActiveTab("members")}
-          />
-          <TabButton
-            label="Volunteers"
+            label="Participants"
             active={activeTab === "volunteers"}
             onClick={() => setActiveTab("volunteers")}
           />
@@ -1519,85 +1514,6 @@ export default function AdminDashboard() {
                                   Edit Log
                                 </button>
                               )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </SectionCard>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* -------------------------------------------------- */}
-        {/* TAB: MEMBERS                                        */}
-        {/* -------------------------------------------------- */}
-        {activeTab === "members" && (
-          <div>
-            <h2 className="text-lg font-bold text-stone-800 mb-1">
-              Members with No Contact Info
-            </h2>
-            <p className="text-sm text-stone-500 mb-4">
-              These members are excluded from weekly assignments. Update their
-              records in Planning Center and the next daily sync will pick up
-              the changes.
-            </p>
-
-            {membersNoContact.length === 0 ? (
-              <GreenNotice>
-                ✅ All members have contact information on file.
-              </GreenNotice>
-            ) : (
-              <>
-                {/* Mobile cards */}
-                <div className="sm:hidden space-y-3">
-                  {membersNoContact.map((m) => (
-                    <div
-                      key={m.id}
-                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
-                    >
-                      <p className="font-semibold text-stone-800 text-sm mb-1">
-                        {m.first_name} {m.last_name}
-                      </p>
-                      <p className="text-xs text-stone-400">
-                        No email · No phone
-                      </p>
-                      <p className="text-xs text-stone-300 font-mono mt-1">
-                        {m.id}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop table */}
-                <SectionCard className="hidden sm:block">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[480px]">
-                      <TableHeader>
-                        <Th>Name</Th>
-                        <Th>Email</Th>
-                        <Th>Phone</Th>
-                        <Th>PCO ID</Th>
-                      </TableHeader>
-                      <tbody className="divide-y divide-stone-50">
-                        {membersNoContact.map((m) => (
-                          <tr
-                            key={m.id}
-                            className="hover:bg-amber-50/30 transition-colors"
-                          >
-                            <td className="px-4 py-3 text-stone-800 font-medium">
-                              {m.first_name} {m.last_name}
-                            </td>
-                            <td className="px-4 py-3 text-stone-400 italic">
-                              None
-                            </td>
-                            <td className="px-4 py-3 text-stone-400 italic">
-                              None
-                            </td>
-                            <td className="px-4 py-3 text-stone-300 font-mono text-xs">
-                              {m.id}
                             </td>
                           </tr>
                         ))}
