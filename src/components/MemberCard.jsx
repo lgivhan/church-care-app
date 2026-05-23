@@ -118,7 +118,10 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         {member?.email && (
           <p className="text-sm text-stone-600 break-all">{member.email}</p>
         )}
-        {!member?.phone && !member?.email && (
+        {member?.address && (
+          <p className="text-sm text-stone-600">📬 {member.address}</p>
+        )}
+        {!member?.phone && !member?.email && !member?.address && (
           <p className="text-sm text-stone-400 italic">
             No contact details on file
           </p>

@@ -63,8 +63,9 @@ CREATE TABLE IF NOT EXISTS members (
   last_name       TEXT NOT NULL DEFAULT '',
   email           TEXT,
   phone           TEXT,
+  address         TEXT,
   birthday        DATE,                     -- nullable; sourced from PCO if available
-  membership_type TEXT, 
+  membership_type TEXT,
   last_contacted  TIMESTAMPTZ,              -- updated when a contact_log is inserted
   last_synced     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -109,7 +110,7 @@ CREATE TABLE IF NOT EXISTS contact_logs (
   volunteer_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   assignment_id   UUID REFERENCES assignments(id) ON DELETE SET NULL,
   notes           TEXT,
-  contact_method  TEXT CHECK (contact_method IN ('call', 'text', 'email', 'voicemail', 'in_person')),
+  contact_method  TEXT CHECK (contact_method IN ('call', 'text', 'email', 'voicemail', 'in_person', 'snail_mail')),
   contacted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   needs_follow_up BOOLEAN NOT NULL DEFAULT false,
   follow_up_resolved      BOOLEAN NOT NULL DEFAULT false,
@@ -187,8 +188,8 @@ BEGIN
       row_number() OVER (ORDER BY last_contacted ASC NULLS FIRST) AS member_rank
     FROM members
     WHERE
-      -- Must have at least one way to be contacted
-      (email IS NOT NULL OR phone IS NOT NULL)
+      -- Must have at least one way to be contacted (phone, email, or physical address)
+      (email IS NOT NULL OR phone IS NOT NULL OR address IS NOT NULL)
       -- Exclude children and teens based on membership type.
       -- We check for 'Child' and 'Teen' case-insensitively to catch
       -- all PCO membership type variations e.g:

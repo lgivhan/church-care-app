@@ -19,6 +19,9 @@ function getContactMethodOptions(member) {
   if (member?.email) {
     options.push({ value: "email", label: "✉️ Email" });
   }
+  if (member?.address) {
+    options.push({ value: "snail_mail", label: "📬 Snail Mail" });
+  }
   options.push({ value: "in_person", label: "🤝 In Person" });
   return options;
 }
@@ -54,7 +57,7 @@ export default function AdHocContactModal({
     async function loadData() {
       const membersResult = await supabase
         .from("members")
-        .select("id, first_name, last_name, email, phone")
+        .select("id, first_name, last_name, email, phone, address")
         .order("last_name", { ascending: true });
 
       if (membersResult.error) {

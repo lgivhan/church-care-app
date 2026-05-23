@@ -126,6 +126,7 @@ export default function PrintView({
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Email</th>
+                    <th>Address</th>
                     <th>
                       Method
                       <br />
@@ -136,7 +137,7 @@ export default function PrintView({
                           color: "#666",
                         }}
                       >
-                        call / text / email / in person
+                        call / text / email / snail mail / in person
                       </span>
                     </th>
                     <th className="print-notes-cell">Notes</th>
@@ -152,6 +153,7 @@ export default function PrintView({
                         {formatPhone(a.members?.phone)}
                       </td>
                       <td>{a.members?.email ?? "—"}</td>
+                      <td>{a.members?.address ?? "—"}</td>
                       <td></td>
                       <td className="print-notes-cell"></td>
                     </tr>

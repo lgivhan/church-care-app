@@ -120,6 +120,12 @@ Deno.serve(async (req: Request) => {
       pcoHeaders,
     );
 
+    // Fetch all physical addresses
+    const addressMap = await fetchAddressDetails(
+      `${PCO_BASE_URL}/addresses?per_page=${PAGE_SIZE}`,
+      pcoHeaders,
+    );
+
     // --------------------------------------------------------
     // 6. Transform Planning Center records into our members
     //    table format and upsert in batches.
@@ -134,6 +140,7 @@ Deno.serve(async (req: Request) => {
         last_name: attrs.last_name ?? "",
         email: emailMap[personId] ?? null,
         phone: phoneMap[personId] ?? null,
+        address: addressMap[personId] ?? null,
         birthday: attrs.birthdate ?? null,
         membership_type: attrs.membership ?? null,
         last_synced: new Date().toISOString(),
@@ -200,6 +207,21 @@ interface PCOPerson {
   };
 }
 
+interface PCOAddress {
+  id: string;
+  attributes?: {
+    street_line_1?: string | null;
+    street_line_2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+    primary?: boolean;
+  };
+  relationships?: {
+    person?: { data?: { id?: string } };
+  };
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -258,6 +280,69 @@ async function fetchContactDetails(
   }
 
   // Merge fallbacks for any person who had no primary marked
+  for (const [personId, value] of Object.entries(fallbackMap)) {
+    if (!resultMap[personId]) {
+      resultMap[personId] = value;
+    }
+  }
+
+  return resultMap;
+}
+
+/**
+ * Fetches the PCO /addresses endpoint and returns a map of
+ * { person_id → formatted address string }.
+ *
+ * PCO addresses are structured objects, so we format them into
+ * a single line: "123 Main St, City, ST 12345".
+ * Primary address wins; first found is the fallback.
+ */
+async function fetchAddressDetails(
+  startUrl: string,
+  headers: Record<string, string>,
+): Promise<Record<string, string>> {
+  const resultMap: Record<string, string> = {};
+  const fallbackMap: Record<string, string> = {};
+
+  let nextUrl: string | null = startUrl;
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl, { headers });
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch addresses from ${nextUrl}: ${response.status}`,
+      );
+      break;
+    }
+
+    const data = await response.json();
+
+    if (data.data && Array.isArray(data.data)) {
+      for (const item of data.data as PCOAddress[]) {
+        const personId = item.relationships?.person?.data?.id;
+        if (!personId) continue;
+
+        const a = item.attributes ?? {};
+        const parts = [a.street_line_1, a.street_line_2].filter(Boolean);
+        const street = parts.join(" ");
+        const cityLine = [a.city, a.state].filter(Boolean).join(", ");
+        const formatted = [street, cityLine, a.zip].filter(Boolean).join(", ");
+
+        if (!formatted) continue;
+
+        if (!fallbackMap[personId]) {
+          fallbackMap[personId] = formatted;
+        }
+        if (a.primary === true) {
+          resultMap[personId] = formatted;
+        }
+      }
+    }
+
+    nextUrl = data.links?.next ?? null;
+  }
+
   for (const [personId, value] of Object.entries(fallbackMap)) {
     if (!resultMap[personId]) {
       resultMap[personId] = value;

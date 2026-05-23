@@ -33,6 +33,9 @@ function getContactMethodOptions(member) {
   if (member?.email) {
     options.push({ value: "email", label: "✉️ Email" });
   }
+  if (member?.address) {
+    options.push({ value: "snail_mail", label: "📬 Snail Mail" });
+  }
   options.push({ value: "in_person", label: "🤝 In Person" });
   return options;
 }

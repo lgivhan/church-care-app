@@ -70,6 +70,7 @@ function formatContactMethod(method) {
     email: "✉️ Email",
     voicemail: "📱 Voicemail",
     in_person: "🤝 In Person",
+    snail_mail: "📬 Snail Mail",
   };
   return map[method] ?? "—";
 }
@@ -283,7 +284,7 @@ export default function AdminDashboard() {
         caller_id,
         member_id,
         profiles!assignments_caller_id_fkey (full_name, email, ministry, is_non_technical),
-        members (first_name, last_name, email, phone, birthday, membership_type)
+        members (first_name, last_name, email, phone, address, birthday, membership_type)
       `,
       )
       .eq("week_starting", selectedWeek)
@@ -399,9 +400,12 @@ export default function AdminDashboard() {
   async function loadMembersNoContact() {
     const { data } = await supabase
       .from("members")
-      .select("id, first_name, last_name, email, phone, membership_type")
+      .select(
+        "id, first_name, last_name, email, phone, address, membership_type",
+      )
       .is("email", null)
       .is("phone", null)
+      .is("address", null)
       .order("last_name", { ascending: true });
 
     const filtered = (data ?? []).filter((m) => {
@@ -1264,6 +1268,7 @@ export default function AdminDashboard() {
                       email: "Email",
                       voicemail: "Voicemail",
                       in_person: "In Person",
+                      snail_mail: "Snail Mail",
                     };
                     return (
                       <div
@@ -2156,6 +2161,7 @@ export default function AdminDashboard() {
                 <option value="email">Email</option>
                 <option value="voicemail">Voicemail</option>
                 <option value="in_person">In Person</option>
+                <option value="snail_mail">Snail Mail</option>
               </select>
               <button
                 onClick={() => setHistoryFollowUpOnly((p) => !p)}
@@ -2198,6 +2204,7 @@ export default function AdminDashboard() {
                     { key: "email", label: "✉️ Email" },
                     { key: "voicemail", label: "📱 Voicemail" },
                     { key: "in_person", label: "🤝 In Person" },
+                    { key: "snail_mail", label: "📬 Snail Mail" },
                   ]
                     .map(({ key, label }) => ({
                       key,

@@ -34,6 +34,7 @@ const CONTACT_METHOD_LABELS = {
   email: "Email",
   voicemail: "Voicemail",
   in_person: "In Person",
+  snail_mail: "Snail Mail",
 };
 
 function getMethodLabel(method) {
@@ -105,6 +106,7 @@ export default function VolunteerDashboard() {
             last_name,
             email,
             phone,
+            address,
             birthday,
             membership_type
           )
