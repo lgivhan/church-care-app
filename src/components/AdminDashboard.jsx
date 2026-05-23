@@ -14,7 +14,7 @@
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
-import { supabase, getTokenSafe } from "../lib/supabaseClient";
+import { supabase, getTokenSafe, getAccessToken } from "../lib/supabaseClient";
 import { getThisSunday, sortAssignments } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -816,34 +816,34 @@ export default function AdminDashboard() {
 
   async function handleProxyEdit(assignment) {
     try {
-      const LOG_SELECT =
-        "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request";
+      const base = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`;
+      const select =
+        "id,assignment_id,notes,needs_follow_up,contact_method,prayer_request";
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const headers = {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      };
 
       // Primary: look up by assignment_id
-      const { data: byAssignment, error: err1 } = await supabase
-        .from("contact_logs")
-        .select(LOG_SELECT)
-        .eq("assignment_id", assignment.id)
-        .order("contacted_at", { ascending: false })
-        .limit(1);
-
-      if (err1) throw err1;
+      const r1 = await fetch(
+        `${base}?select=${select}&assignment_id=eq.${assignment.id}&order=contacted_at.desc&limit=1`,
+        { headers },
+      );
+      if (!r1.ok) throw new Error(await r1.text());
+      const byAssignment = await r1.json();
 
       let existingLog = byAssignment?.[0] ?? null;
 
-      // Fallback: logs created before assignment_id was reliably stored —
-      // find the most recent log for this member by this volunteer this week.
+      // Fallback: logs without assignment_id — find by member + volunteer + week
       if (!existingLog) {
-        const { data: byMember, error: err2 } = await supabase
-          .from("contact_logs")
-          .select(LOG_SELECT)
-          .eq("member_id", assignment.member_id)
-          .eq("volunteer_id", assignment.caller_id)
-          .gte("contacted_at", assignment.week_starting)
-          .order("contacted_at", { ascending: false })
-          .limit(1);
-
-        if (err2) throw err2;
+        const r2 = await fetch(
+          `${base}?select=${select}&member_id=eq.${assignment.member_id}&volunteer_id=eq.${assignment.caller_id}&contacted_at=gte.${assignment.week_starting}&order=contacted_at.desc&limit=1`,
+          { headers },
+        );
+        if (!r2.ok) throw new Error(await r2.text());
+        const byMember = await r2.json();
         existingLog = byMember?.[0] ?? null;
       }
 
