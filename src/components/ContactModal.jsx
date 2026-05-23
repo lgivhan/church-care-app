@@ -65,6 +65,7 @@ export default function ContactModal({
   const [prayerRequest, setPrayerRequest] = useState(
     existingLog?.prayer_request ?? false,
   );
+  const [heardFrom, setHeardFrom] = useState(existingLog?.heard_from ?? null);
   const contactMethodOptions = getContactMethodOptions(member);
 
   async function handleSubmit(e) {
@@ -77,6 +78,12 @@ export default function ContactModal({
       setError(
         "Please add a note before saving. Even a brief summary helps the pastoral team.",
       );
+      setLoading(false);
+      return;
+    }
+
+    if (heardFrom === null) {
+      setError("Please indicate whether you reached this person.");
       setLoading(false);
       return;
     }
@@ -101,6 +108,7 @@ export default function ContactModal({
         needs_follow_up: needsFollowUp,
         contact_method: contactMethod,
         prayer_request: prayerRequest,
+        heard_from: heardFrom,
       };
 
       if (isEditing) {
@@ -291,6 +299,38 @@ export default function ContactModal({
                 </p>
               )}
             </div>
+            {/* Heard from */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Did you reach this person?
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHeardFrom(true)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    heardFrom === true
+                      ? "bg-green-600 text-white border-green-600"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-green-50"
+                  }`}
+                >
+                  Yes, I spoke with them
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeardFrom(false)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    heardFrom === false
+                      ? "bg-stone-500 text-white border-stone-500"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                  }`}
+                >
+                  No, couldn't reach
+                </button>
+              </div>
+            </div>
+
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

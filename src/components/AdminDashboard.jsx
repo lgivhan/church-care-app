@@ -220,6 +220,7 @@ export default function AdminDashboard() {
   const [historyMethod, setHistoryMethod] = useState("");
   const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
   const [historyPrayerOnly, setHistoryPrayerOnly] = useState(false);
+  const [historyNotHeardFrom, setHistoryNotHeardFrom] = useState(false);
 
   // Toast notifications
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -346,11 +347,13 @@ export default function AdminDashboard() {
       .select(
         `
         id,
+        member_id,
         notes,
         contacted_at,
         needs_follow_up,
         contact_method,
         prayer_request,
+        heard_from,
         volunteer_id,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name),
@@ -954,6 +957,28 @@ export default function AdminDashboard() {
     ? assignments.filter((a) => a.caller_id === selectedVolunteer.id)
     : assignments;
 
+  let notHeardFromMemberIds = null;
+  if (historyNotHeardFrom) {
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const lastHeardMap = {};
+    contactLogs.forEach((log) => {
+      if (log.heard_from === true && log.member_id) {
+        const t = new Date(log.contacted_at);
+        if (!lastHeardMap[log.member_id] || t > lastHeardMap[log.member_id]) {
+          lastHeardMap[log.member_id] = t;
+        }
+      }
+    });
+    const allMemberIds = [
+      ...new Set(contactLogs.map((l) => l.member_id).filter(Boolean)),
+    ];
+    notHeardFromMemberIds = new Set(
+      allMemberIds.filter(
+        (mid) => !lastHeardMap[mid] || lastHeardMap[mid] < cutoff,
+      ),
+    );
+  }
+
   const filteredContactLogs = contactLogs.filter((log) => {
     if (historyMemberSearch.trim()) {
       const full =
@@ -966,6 +991,11 @@ export default function AdminDashboard() {
     if (historyMethod && log.contact_method !== historyMethod) return false;
     if (historyFollowUpOnly && !log.needs_follow_up) return false;
     if (historyPrayerOnly && !log.prayer_request) return false;
+    if (
+      notHeardFromMemberIds !== null &&
+      !notHeardFromMemberIds.has(log.member_id)
+    )
+      return false;
     return true;
   });
 
@@ -2116,11 +2146,22 @@ export default function AdminDashboard() {
               >
                 Prayer request only
               </button>
+              <button
+                onClick={() => setHistoryNotHeardFrom((p) => !p)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  historyNotHeardFrom
+                    ? "bg-rose-600 text-white border-rose-600"
+                    : "bg-white text-stone-600 border-stone-200 hover:bg-rose-50"
+                }`}
+              >
+                Not heard from (2+ wks)
+              </button>
               {(historyMemberSearch ||
                 historyVolunteerId ||
                 historyMethod ||
                 historyFollowUpOnly ||
-                historyPrayerOnly) && (
+                historyPrayerOnly ||
+                historyNotHeardFrom) && (
                 <button
                   onClick={() => {
                     setHistoryMemberSearch("");
@@ -2128,6 +2169,7 @@ export default function AdminDashboard() {
                     setHistoryMethod("");
                     setHistoryFollowUpOnly(false);
                     setHistoryPrayerOnly(false);
+                    setHistoryNotHeardFrom(false);
                   }}
                   className="px-3 py-2.5 rounded-xl text-sm text-stone-400 hover:text-stone-600 transition-colors"
                 >
@@ -2196,7 +2238,8 @@ export default function AdminDashboard() {
                   historyMemberSearch ||
                   historyVolunteerId ||
                   historyMethod ||
-                  historyFollowUpOnly
+                  historyFollowUpOnly ||
+                  historyNotHeardFrom
                     ? "No contacts match the current filters."
                     : "No contact logs yet."
                 }
@@ -2209,6 +2252,7 @@ export default function AdminDashboard() {
                       <Th>Member</Th>
                       <Th>Volunteer</Th>
                       <Th>Method</Th>
+                      <Th>Reached?</Th>
                       <Th>Notes</Th>
                       <Th>Date</Th>
                       <Th>Follow-up</Th>
@@ -2232,6 +2276,18 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
                             {formatContactMethod(log.contact_method)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {log.heard_from === true && (
+                              <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                Reached
+                              </span>
+                            )}
+                            {log.heard_from === false && (
+                              <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                                No answer
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-stone-600 max-w-xs">
                             <p className="whitespace-normal" title={log.notes}>

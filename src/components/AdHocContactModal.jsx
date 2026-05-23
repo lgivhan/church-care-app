@@ -49,6 +49,7 @@ export default function AdHocContactModal({
   const [notes, setNotes] = useState("");
   const [needsFollowUp, setNeedsFollowUp] = useState(false);
   const [prayerRequest, setPrayerRequest] = useState(false);
+  const [heardFrom, setHeardFrom] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [methodError, setMethodError] = useState(false);
@@ -130,6 +131,10 @@ export default function AdHocContactModal({
       );
       return;
     }
+    if (heardFrom === null) {
+      setError("Please indicate whether the volunteer reached this person.");
+      return;
+    }
     if (!contactMethod) {
       setError("Please select how the volunteer contacted this person.");
       setMethodError(true);
@@ -151,6 +156,7 @@ export default function AdHocContactModal({
           contact_method: contactMethod,
           needs_follow_up: needsFollowUp,
           prayer_request: prayerRequest,
+          heard_from: heardFrom,
         });
 
       if (insertError) throw insertError;
@@ -361,6 +367,38 @@ export default function AdHocContactModal({
                     Consider flagging for follow-up below.
                   </p>
                 )}
+              </div>
+
+              {/* Heard from */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Did the volunteer reach this person?
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHeardFrom(true)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      heardFrom === true
+                        ? "bg-green-600 text-white border-green-600"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-green-50"
+                    }`}
+                  >
+                    Yes, they spoke
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeardFrom(false)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      heardFrom === false
+                        ? "bg-stone-500 text-white border-stone-500"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    No, couldn't reach
+                  </button>
+                </div>
               </div>
 
               {/* Week */}
