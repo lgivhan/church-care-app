@@ -219,6 +219,7 @@ export default function AdminDashboard() {
   const [historyVolunteerId, setHistoryVolunteerId] = useState("");
   const [historyMethod, setHistoryMethod] = useState("");
   const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
+  const [historyPrayerOnly, setHistoryPrayerOnly] = useState(false);
 
   // Toast notifications
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -963,6 +964,7 @@ export default function AdminDashboard() {
       return false;
     if (historyMethod && log.contact_method !== historyMethod) return false;
     if (historyFollowUpOnly && !log.needs_follow_up) return false;
+    if (historyPrayerOnly && !log.prayer_request) return false;
     return true;
   });
 
@@ -2103,16 +2105,28 @@ export default function AdminDashboard() {
               >
                 Follow-up only
               </button>
+              <button
+                onClick={() => setHistoryPrayerOnly((p) => !p)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  historyPrayerOnly
+                    ? "bg-stone-700 text-white border-stone-700"
+                    : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                }`}
+              >
+                Prayer request only
+              </button>
               {(historyMemberSearch ||
                 historyVolunteerId ||
                 historyMethod ||
-                historyFollowUpOnly) && (
+                historyFollowUpOnly ||
+                historyPrayerOnly) && (
                 <button
                   onClick={() => {
                     setHistoryMemberSearch("");
                     setHistoryVolunteerId("");
                     setHistoryMethod("");
                     setHistoryFollowUpOnly(false);
+                    setHistoryPrayerOnly(false);
                   }}
                   className="px-3 py-2.5 rounded-xl text-sm text-stone-400 hover:text-stone-600 transition-colors"
                 >
