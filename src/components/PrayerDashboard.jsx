@@ -109,7 +109,10 @@ export default function PrayerDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <p className="text-stone-500 text-sm">Loading prayer requests...</p>
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <p className="text-stone-500 text-sm">Loading prayer requests...</p>
+        </div>
       </div>
     );
   }
