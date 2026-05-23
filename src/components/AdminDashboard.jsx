@@ -815,20 +815,28 @@ export default function AdminDashboard() {
   }
 
   async function handleProxyEdit(assignment) {
-    const { data } = await supabase
-      .from("contact_logs")
-      .select(
-        "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
-      )
-      .eq("assignment_id", assignment.id)
-      .single();
-    setProxyAssignment(assignment);
-    setProxyVolunteer({
-      id: assignment.caller_id,
-      full_name: assignment.profiles?.full_name ?? "",
-    });
-    setProxyExistingLog(data ?? null);
-    setProxyModalOpen(true);
+    try {
+      const { data, error } = await supabase
+        .from("contact_logs")
+        .select(
+          "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
+        )
+        .eq("assignment_id", assignment.id)
+        .order("contacted_at", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      setProxyAssignment(assignment);
+      setProxyVolunteer({
+        id: assignment.caller_id,
+        full_name: assignment.profiles?.full_name ?? "",
+      });
+      setProxyExistingLog(data?.[0] ?? null);
+      setProxyModalOpen(true);
+    } catch (err) {
+      showToast("Could not load contact log. Please try again.", "error");
+    }
   }
 
   function handleProxyModalClose() {
