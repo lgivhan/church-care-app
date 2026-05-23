@@ -350,6 +350,7 @@ export default function AdminDashboard() {
         contacted_at,
         needs_follow_up,
         contact_method,
+        prayer_request,
         volunteer_id,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name),
