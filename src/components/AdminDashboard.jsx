@@ -214,6 +214,14 @@ export default function AdminDashboard() {
     useState({});
   const [showPrint, setShowPrint] = useState(false);
 
+  // Contacts tab
+  const [allMembers, setAllMembers] = useState([]);
+  const [contactsTypeFilter, setContactsTypeFilter] = useState("");
+  const [contactsSort, setContactsSort] = useState({
+    col: "last_contacted",
+    dir: "asc",
+  });
+
   // History tab filters
   const [historyMemberSearch, setHistoryMemberSearch] = useState("");
   const [historyVolunteerId, setHistoryVolunteerId] = useState("");
@@ -255,6 +263,7 @@ export default function AdminDashboard() {
         loadMembersNoContact(),
         loadPrayerRequests(),
         loadMyAssignments(),
+        loadAllMembers(),
       ]);
     } catch (err) {
       setError("Failed to load dashboard data. Please refresh.");
@@ -362,6 +371,14 @@ export default function AdminDashboard() {
       )
       .order("contacted_at", { ascending: false });
     setContactLogs(data ?? []);
+  }
+
+  async function loadAllMembers() {
+    const { data } = await supabase
+      .from("members")
+      .select("id, first_name, last_name, membership_type")
+      .order("last_name", { ascending: true });
+    setAllMembers(data ?? []);
   }
 
   async function loadFollowUps() {
@@ -1012,6 +1029,80 @@ export default function AdminDashboard() {
     return true;
   });
 
+  // Contacts tab — derive last contacted + last heard from per member
+  const lastContactedMap = {};
+  const lastHeardFromMap = {};
+  contactLogs.forEach((log) => {
+    if (!log.member_id) return;
+    const ts = new Date(log.contacted_at).getTime();
+    if (
+      !lastContactedMap[log.member_id] ||
+      ts > lastContactedMap[log.member_id].ts
+    ) {
+      lastContactedMap[log.member_id] = {
+        ts,
+        date: log.contacted_at,
+        volunteer: log.profiles?.full_name ?? null,
+      };
+    }
+    if (log.heard_from === true) {
+      if (
+        !lastHeardFromMap[log.member_id] ||
+        ts > lastHeardFromMap[log.member_id].ts
+      ) {
+        lastHeardFromMap[log.member_id] = {
+          ts,
+          date: log.contacted_at,
+          volunteer: log.profiles?.full_name ?? null,
+        };
+      }
+    }
+  });
+
+  const contactTypes = [
+    ...new Set(allMembers.map((m) => m.membership_type).filter(Boolean)),
+  ].sort();
+
+  function handleContactsSort(col) {
+    setContactsSort((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: "asc" },
+    );
+  }
+
+  const contactsRows = allMembers
+    .filter(
+      (m) => !contactsTypeFilter || m.membership_type === contactsTypeFilter,
+    )
+    .map((m) => ({
+      id: m.id,
+      name: `${m.first_name} ${m.last_name}`,
+      membership_type: m.membership_type,
+      lastContacted: lastContactedMap[m.id] ?? null,
+      lastHeardFrom: lastHeardFromMap[m.id] ?? null,
+    }))
+    .sort((a, b) => {
+      const { col, dir } = contactsSort;
+      const mult = dir === "asc" ? 1 : -1;
+      if (col === "name") return mult * a.name.localeCompare(b.name);
+      if (col === "membership_type") {
+        return (
+          mult *
+          (a.membership_type ?? "").localeCompare(b.membership_type ?? "")
+        );
+      }
+      const field =
+        col === "last_contacted" ? "lastContacted" : "lastHeardFrom";
+      const va = a[field]?.ts ?? null;
+      const vb = b[field]?.ts ?? null;
+      if (va === null && vb === null) return 0;
+      // nulls (never contacted) sort first on asc, last on desc
+      if (va === null) return dir === "asc" ? -1 : 1;
+      if (vb === null) return dir === "asc" ? 1 : -1;
+      return mult * (va - vb);
+    });
+
   // --------------------------------------------------------
   // RENDER
   // --------------------------------------------------------
@@ -1092,6 +1183,11 @@ export default function AdminDashboard() {
             label="Participants"
             active={activeTab === "volunteers"}
             onClick={() => setActiveTab("volunteers")}
+          />
+          <TabButton
+            label="Contacts"
+            active={activeTab === "contacts"}
+            onClick={() => setActiveTab("contacts")}
           />
           <TabButton
             label="History"
@@ -2080,6 +2176,188 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* -------------------------------------------------- */}
+        {/* TAB: CONTACTS                                       */}
+        {/* -------------------------------------------------- */}
+        {activeTab === "contacts" && (
+          <div>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-lg font-bold text-stone-800">All Contacts</h2>
+              <select
+                value={contactsTypeFilter}
+                onChange={(e) => setContactsTypeFilter(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+              >
+                <option value="">All types</option>
+                {contactTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {contactsRows.length === 0 ? (
+              <EmptyState
+                message={
+                  contactsTypeFilter
+                    ? "No contacts match the selected type."
+                    : "No contacts found."
+                }
+              />
+            ) : (
+              <>
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-3">
+                  {contactsRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="font-semibold text-stone-800 text-sm">
+                          {row.name}
+                        </p>
+                        {row.membership_type && (
+                          <span className="shrink-0 text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                            {row.membership_type}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs text-stone-500">
+                          <span className="font-medium text-stone-600">
+                            Last contacted:
+                          </span>{" "}
+                          {row.lastContacted ? (
+                            <>
+                              {new Date(
+                                row.lastContacted.date,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}{" "}
+                              by {row.lastContacted.volunteer ?? "—"}
+                            </>
+                          ) : (
+                            <span className="text-stone-400">Never</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-stone-500">
+                          <span className="font-medium text-stone-600">
+                            Last heard from:
+                          </span>{" "}
+                          {row.lastHeardFrom ? (
+                            <>
+                              {new Date(
+                                row.lastHeardFrom.date,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}{" "}
+                              by {row.lastHeardFrom.volunteer ?? "—"}
+                            </>
+                          ) : (
+                            <span className="text-stone-400">Never</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <SectionCard className="hidden sm:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[680px]">
+                      <TableHeader>
+                        {[
+                          { col: "name", label: "Contact Name" },
+                          { col: "membership_type", label: "Type" },
+                          { col: "last_contacted", label: "Last Contacted" },
+                          { col: "last_heard_from", label: "Last Heard From" },
+                        ].map(({ col, label }) => (
+                          <th
+                            key={col}
+                            onClick={() => handleContactsSort(col)}
+                            className="text-left px-4 py-3 text-stone-500 font-medium text-xs uppercase tracking-wide cursor-pointer select-none hover:text-stone-700 transition-colors"
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {label}
+                              {contactsSort.col === col ? (
+                                <span className="text-amber-500">
+                                  {contactsSort.dir === "asc" ? "↑" : "↓"}
+                                </span>
+                              ) : (
+                                <span className="text-stone-300">↕</span>
+                              )}
+                            </span>
+                          </th>
+                        ))}
+                      </TableHeader>
+                      <tbody className="divide-y divide-stone-50">
+                        {contactsRows.map((row) => (
+                          <tr
+                            key={row.id}
+                            className="hover:bg-amber-50/30 transition-colors"
+                          >
+                            <td className="px-4 py-3 font-medium text-stone-800 whitespace-nowrap">
+                              {row.name}
+                            </td>
+                            <td className="px-4 py-3 text-stone-500 whitespace-nowrap">
+                              {row.membership_type ?? (
+                                <span className="text-stone-300">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {row.lastContacted ? (
+                                <>
+                                  {new Date(
+                                    row.lastContacted.date,
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}{" "}
+                                  <span className="text-stone-400">
+                                    by {row.lastContacted.volunteer ?? "—"}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-stone-400">Never</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {row.lastHeardFrom ? (
+                                <>
+                                  {new Date(
+                                    row.lastHeardFrom.date,
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}{" "}
+                                  <span className="text-stone-400">
+                                    by {row.lastHeardFrom.volunteer ?? "—"}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-stone-400">Never</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </SectionCard>
+              </>
+            )}
           </div>
         )}
 
