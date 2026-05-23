@@ -47,8 +47,8 @@ export default function AdHocContactModal({
   const [showMemberList, setShowMemberList] = useState(false);
   const [contactMethod, setContactMethod] = useState("");
   const [notes, setNotes] = useState("");
-  const [needsFollowUp, setNeedsFollowUp] = useState(false);
-  const [prayerRequest, setPrayerRequest] = useState(false);
+  const [needsFollowUp, setNeedsFollowUp] = useState(null);
+  const [prayerRequest, setPrayerRequest] = useState(null);
   const [heardFrom, setHeardFrom] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,7 +132,17 @@ export default function AdHocContactModal({
       return;
     }
     if (heardFrom === null) {
-      setError("Please indicate whether the volunteer reached this person.");
+      setError(
+        "Please indicate whether the volunteer heard back from this person.",
+      );
+      return;
+    }
+    if (needsFollowUp === null) {
+      setError("Please indicate whether this person needs a follow-up.");
+      return;
+    }
+    if (prayerRequest === null) {
+      setError("Please indicate whether this person has a prayer request.");
       return;
     }
     if (!contactMethod) {
@@ -372,7 +382,7 @@ export default function AdHocContactModal({
               {/* Heard from */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Did the volunteer reach this person?
+                  Did the volunteer hear back from this person?
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -385,7 +395,7 @@ export default function AdHocContactModal({
                         : "bg-white text-stone-600 border-stone-200 hover:bg-green-50"
                     }`}
                   >
-                    Yes, they spoke
+                    Yes
                   </button>
                   <button
                     type="button"
@@ -396,7 +406,7 @@ export default function AdHocContactModal({
                         : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
                     }`}
                   >
-                    No, couldn't reach
+                    No
                   </button>
                 </div>
               </div>
@@ -428,45 +438,67 @@ export default function AdHocContactModal({
               </div>
 
               {/* Needs follow-up */}
-              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="adhoc-needs-follow-up"
-                  checked={needsFollowUp}
-                  onChange={(e) => setNeedsFollowUp(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
-                />
-                <label
-                  htmlFor="adhoc-needs-follow-up"
-                  className="text-sm text-amber-800 cursor-pointer"
-                >
-                  <span className="font-medium">Flag for follow-up</span>
-                  <span className="block text-amber-600 text-xs mt-0.5">
-                    Check this if this member needs additional pastoral
-                    attention or a follow-up call.
-                  </span>
+              <div>
+                <label className="block text-sm font-medium text-amber-800 mb-1">
+                  Does this person need a follow-up?
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNeedsFollowUp(true)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      needsFollowUp === true
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-amber-50"
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNeedsFollowUp(false)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      needsFollowUp === false
+                        ? "bg-stone-500 text-white border-stone-500"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
 
               {/* Prayer ministry request */}
-              <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="adhoc-prayer-request"
-                  checked={prayerRequest}
-                  onChange={(e) => setPrayerRequest(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="adhoc-prayer-request"
-                  className="text-sm text-blue-800 cursor-pointer"
-                >
-                  <span className="font-medium">Prayer ministry request</span>
-                  <span className="block text-blue-600 text-xs mt-0.5">
-                    Check this if this member would like the prayer ministry to
-                    pray for them.
-                  </span>
+              <div>
+                <label className="block text-sm font-medium text-blue-800 mb-1">
+                  Prayer ministry request?
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrayerRequest(true)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      prayerRequest === true
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-blue-50"
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrayerRequest(false)}
+                    className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                      prayerRequest === false
+                        ? "bg-stone-500 text-white border-stone-500"
+                        : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
 
               {/* Actions */}

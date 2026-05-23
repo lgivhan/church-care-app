@@ -54,7 +54,7 @@ export default function ContactModal({
 
   const [notes, setNotes] = useState(existingLog?.notes ?? "");
   const [needsFollowUp, setNeedsFollowUp] = useState(
-    existingLog?.needs_follow_up ?? false,
+    existingLog?.needs_follow_up ?? null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +63,7 @@ export default function ContactModal({
   );
   const [methodError, setMethodError] = useState(false);
   const [prayerRequest, setPrayerRequest] = useState(
-    existingLog?.prayer_request ?? false,
+    existingLog?.prayer_request ?? null,
   );
   const [heardFrom, setHeardFrom] = useState(existingLog?.heard_from ?? null);
   const contactMethodOptions = getContactMethodOptions(member);
@@ -83,7 +83,19 @@ export default function ContactModal({
     }
 
     if (heardFrom === null) {
-      setError("Please indicate whether you reached this person.");
+      setError("Please indicate whether you heard back from this person.");
+      setLoading(false);
+      return;
+    }
+
+    if (needsFollowUp === null) {
+      setError("Please indicate whether this person needs a follow-up.");
+      setLoading(false);
+      return;
+    }
+
+    if (prayerRequest === null) {
+      setError("Please indicate whether this person has a prayer request.");
       setLoading(false);
       return;
     }
@@ -218,7 +230,7 @@ export default function ContactModal({
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -302,7 +314,7 @@ export default function ContactModal({
             {/* Heard from */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Did you reach this person?
+                Did you hear back from this person?
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -315,7 +327,7 @@ export default function ContactModal({
                       : "bg-white text-stone-600 border-stone-200 hover:bg-green-50"
                   }`}
                 >
-                  Yes, I spoke with them
+                  Yes
                 </button>
                 <button
                   type="button"
@@ -326,7 +338,7 @@ export default function ContactModal({
                       : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
                   }`}
                 >
-                  No, couldn't reach
+                  No
                 </button>
               </div>
             </div>
@@ -346,45 +358,67 @@ export default function ContactModal({
             </div>
 
             {/* Needs follow-up */}
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-              <input
-                type="checkbox"
-                id="needs-follow-up"
-                checked={needsFollowUp}
-                onChange={(e) => setNeedsFollowUp(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
-              />
-              <label
-                htmlFor="needs-follow-up"
-                className="text-sm text-amber-800 cursor-pointer"
-              >
-                <span className="font-medium">Flag for follow-up</span>
-                <span className="block text-amber-600 text-xs mt-0.5">
-                  Check this if this member needs additional pastoral attention
-                  or a follow-up call.
-                </span>
+            <div>
+              <label className="block text-sm font-medium text-amber-800 mb-1">
+                Does this person need a follow-up?
+                <span className="text-red-500 ml-1">*</span>
               </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNeedsFollowUp(true)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    needsFollowUp === true
+                      ? "bg-amber-500 text-white border-amber-500"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-amber-50"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNeedsFollowUp(false)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    needsFollowUp === false
+                      ? "bg-stone-500 text-white border-stone-500"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                  }`}
+                >
+                  No
+                </button>
+              </div>
             </div>
 
             {/* Prayer ministry request */}
-            <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <input
-                type="checkbox"
-                id="prayer-request"
-                checked={prayerRequest}
-                onChange={(e) => setPrayerRequest(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <label
-                htmlFor="prayer-request"
-                className="text-sm text-blue-800 cursor-pointer"
-              >
-                <span className="font-medium">Prayer ministry request</span>
-                <span className="block text-blue-600 text-xs mt-0.5">
-                  Check this if this member would like the prayer ministry to
-                  pray for them.
-                </span>
+            <div>
+              <label className="block text-sm font-medium text-blue-800 mb-1">
+                Prayer ministry request?
+                <span className="text-red-500 ml-1">*</span>
               </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrayerRequest(true)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    prayerRequest === true
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-blue-50"
+                  }`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrayerRequest(false)}
+                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
+                    prayerRequest === false
+                      ? "bg-stone-500 text-white border-stone-500"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                  }`}
+                >
+                  No
+                </button>
+              </div>
             </div>
 
             {/* Actions */}
