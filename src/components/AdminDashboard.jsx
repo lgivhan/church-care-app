@@ -2099,12 +2099,12 @@ export default function AdminDashboard() {
                 value={historyMemberSearch}
                 onChange={(e) => setHistoryMemberSearch(e.target.value)}
                 placeholder="Search member..."
-                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
               />
               <select
                 value={historyVolunteerId}
                 onChange={(e) => setHistoryVolunteerId(e.target.value)}
-                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+                className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
               >
                 <option value="">All volunteers</option>
                 {volunteers.map((v) => (
@@ -2116,7 +2116,7 @@ export default function AdminDashboard() {
               <select
                 value={historyMethod}
                 onChange={(e) => setHistoryMethod(e.target.value)}
-                className="px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
+                className="w-full sm:w-auto px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
               >
                 <option value="">All methods</option>
                 <option value="call">Call</option>
@@ -2128,7 +2128,7 @@ export default function AdminDashboard() {
               </select>
               <button
                 onClick={() => setHistoryFollowUpOnly((p) => !p)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
                   historyFollowUpOnly
                     ? "bg-stone-700 text-white border-stone-700"
                     : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
@@ -2138,7 +2138,7 @@ export default function AdminDashboard() {
               </button>
               <button
                 onClick={() => setHistoryPrayerOnly((p) => !p)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
                   historyPrayerOnly
                     ? "bg-stone-700 text-white border-stone-700"
                     : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
@@ -2148,7 +2148,7 @@ export default function AdminDashboard() {
               </button>
               <button
                 onClick={() => setHistoryNotHeardFrom((p) => !p)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
                   historyNotHeardFrom
                     ? "bg-rose-600 text-white border-rose-600"
                     : "bg-white text-stone-600 border-stone-200 hover:bg-rose-50"
@@ -2245,71 +2245,133 @@ export default function AdminDashboard() {
                 }
               />
             ) : (
-              <SectionCard>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[680px]">
-                    <TableHeader>
-                      <Th>Member</Th>
-                      <Th>Volunteer</Th>
-                      <Th>Method</Th>
-                      <Th>Reached?</Th>
-                      <Th>Notes</Th>
-                      <Th>Date</Th>
-                      <Th>Follow-up</Th>
-                    </TableHeader>
-                    <tbody className="divide-y divide-stone-50">
-                      {filteredContactLogs.map((log) => (
-                        <tr
-                          key={log.id}
-                          className="hover:bg-amber-50/30 transition-colors"
-                        >
-                          <td className="px-4 py-3 text-stone-800 font-medium whitespace-nowrap">
-                            {log.members?.first_name} {log.members?.last_name}
-                          </td>
-                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
-                            {log.profiles?.full_name}
-                            {log.logged_by_profile?.full_name && (
-                              <span className="block text-xs text-stone-400">
-                                via {log.logged_by_profile.full_name}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
-                            {formatContactMethod(log.contact_method)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {log.heard_from === true && (
-                              <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                                Reached
-                              </span>
-                            )}
-                            {log.heard_from === false && (
-                              <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                                No answer
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-stone-600 max-w-xs">
-                            <p className="whitespace-normal" title={log.notes}>
-                              {log.notes}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-stone-400 whitespace-nowrap">
-                            {formatDateTime(log.contacted_at)}
-                          </td>
-                          <td className="px-4 py-3">
-                            {log.needs_follow_up && (
-                              <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-                                Follow-up
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <>
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-3">
+                  {filteredContactLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <p className="font-semibold text-stone-800 text-sm">
+                          {log.members?.first_name} {log.members?.last_name}
+                        </p>
+                        <div className="flex gap-1 shrink-0 flex-wrap justify-end">
+                          {log.heard_from === true && (
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                              Reached
+                            </span>
+                          )}
+                          {log.heard_from === false && (
+                            <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                              No answer
+                            </span>
+                          )}
+                          {log.needs_follow_up && (
+                            <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                              Follow-up
+                            </span>
+                          )}
+                          {log.prayer_request && (
+                            <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                              Prayer
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-stone-500 mb-1">
+                        {log.profiles?.full_name} ·{" "}
+                        {formatContactMethod(log.contact_method)}
+                        {log.logged_by_profile?.full_name && (
+                          <span className="text-stone-400">
+                            {" "}
+                            via {log.logged_by_profile.full_name}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-stone-400 mb-2">
+                        {formatDateTime(log.contacted_at)}
+                      </p>
+                      {log.notes && (
+                        <p className="text-xs text-stone-600 leading-relaxed">
+                          {log.notes}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </SectionCard>
+
+                {/* Desktop table */}
+                <SectionCard className="hidden sm:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[680px]">
+                      <TableHeader>
+                        <Th>Member</Th>
+                        <Th>Volunteer</Th>
+                        <Th>Method</Th>
+                        <Th>Reached?</Th>
+                        <Th>Notes</Th>
+                        <Th>Date</Th>
+                        <Th>Follow-up</Th>
+                      </TableHeader>
+                      <tbody className="divide-y divide-stone-50">
+                        {filteredContactLogs.map((log) => (
+                          <tr
+                            key={log.id}
+                            className="hover:bg-amber-50/30 transition-colors"
+                          >
+                            <td className="px-4 py-3 text-stone-800 font-medium whitespace-nowrap">
+                              {log.members?.first_name} {log.members?.last_name}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {log.profiles?.full_name}
+                              {log.logged_by_profile?.full_name && (
+                                <span className="block text-xs text-stone-400">
+                                  via {log.logged_by_profile.full_name}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                              {formatContactMethod(log.contact_method)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {log.heard_from === true && (
+                                <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                  Reached
+                                </span>
+                              )}
+                              {log.heard_from === false && (
+                                <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                                  No answer
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-stone-600 max-w-xs">
+                              <p
+                                className="whitespace-normal"
+                                title={log.notes}
+                              >
+                                {log.notes}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 text-stone-400 whitespace-nowrap">
+                              {formatDateTime(log.contacted_at)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {log.needs_follow_up && (
+                                <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
+                                  Follow-up
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </SectionCard>
+              </>
             )}
           </div>
         )}

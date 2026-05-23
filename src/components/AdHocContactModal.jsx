@@ -197,7 +197,7 @@ export default function AdHocContactModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div>
