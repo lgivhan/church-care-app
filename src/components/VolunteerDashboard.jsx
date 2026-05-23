@@ -299,7 +299,7 @@ export default function VolunteerDashboard() {
               </div>
               <div className="w-full bg-stone-100 rounded-full h-2">
                 <div
-                  className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-amber-400 to-green-500 h-2 rounded-full transition-all duration-500"
                   style={{
                     width: `${assignments.length > 0 ? (completedCount / assignments.length) * 100 : 0}%`,
                   }}
