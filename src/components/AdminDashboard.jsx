@@ -1492,6 +1492,18 @@ export default function AdminDashboard() {
                     {printNotice}
                   </span>
                 )}
+                <button
+                  onClick={() =>
+                    handlePrint(
+                      assignments.filter(
+                        (a) => a.profiles?.is_non_technical === true,
+                      ),
+                    )
+                  }
+                  className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
+                >
+                  📄 Print all paper only
+                </button>
                 {selectedVolunteer && (
                   <>
                     <button
