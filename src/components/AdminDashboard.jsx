@@ -15,7 +15,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase, getTokenSafe, getAccessToken } from "../lib/supabaseClient";
-import { getThisSunday, sortAssignments } from "../lib/utils";
+import {
+  getThisSunday,
+  sortAssignments,
+  getDaysLeftInCycle,
+} from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 import PrintView from "./PrintView";
@@ -180,6 +184,7 @@ export default function AdminDashboard() {
   const [myAssignments, setMyAssignments] = useState([]);
   const [myContactLogs, setMyContactLogs] = useState({});
   const [myAdHocLogs, setMyAdHocLogs] = useState([]);
+  const [myCycleStart, setMyCycleStart] = useState(null);
   const [myModalOpen, setMyModalOpen] = useState(false);
   const [mySelectedAssignment, setMySelectedAssignment] = useState(null);
   const [myEditingLog, setMyEditingLog] = useState(null);
@@ -450,7 +455,13 @@ export default function AdminDashboard() {
     setMyUserId(user.id);
     setAdminUserId(user.id);
 
-    const weekStarting = getThisSunday();
+    // Build a 14-day window to find the active cycle
+    const thisSunday = getThisSunday();
+    const cycleWindowStart = (() => {
+      const d = new Date(thisSunday + "T00:00:00");
+      d.setDate(d.getDate() - 13);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    })();
 
     const { data: assignmentData } = await supabase
       .from("assignments")
@@ -473,9 +484,12 @@ export default function AdminDashboard() {
     `,
       )
       .eq("caller_id", user.id)
-      .eq("week_starting", weekStarting)
+      .lte("week_starting", thisSunday)
+      .gte("week_starting", cycleWindowStart)
       .order("status", { ascending: true });
 
+    const activeCycleStart = assignmentData?.[0]?.week_starting ?? thisSunday;
+    setMyCycleStart(activeCycleStart);
     setMyAssignments(sortAssignments(assignmentData ?? []));
 
     if (assignmentData && assignmentData.length > 0) {
@@ -494,9 +508,9 @@ export default function AdminDashboard() {
       setMyContactLogs(logMap);
     }
 
-    const nextWeekStarting = (() => {
-      const d = new Date(weekStarting + "T00:00:00");
-      d.setDate(d.getDate() + 7);
+    const nextCycleStarting = (() => {
+      const d = new Date(activeCycleStart + "T00:00:00");
+      d.setDate(d.getDate() + 14);
       return d.toISOString();
     })();
 
@@ -514,8 +528,8 @@ export default function AdminDashboard() {
       )
       .eq("volunteer_id", user.id)
       .is("assignment_id", null)
-      .gte("contacted_at", weekStarting + "T00:00:00.000Z")
-      .lt("contacted_at", nextWeekStarting);
+      .gte("contacted_at", activeCycleStart + "T00:00:00.000Z")
+      .lt("contacted_at", nextCycleStarting);
 
     setMyAdHocLogs(adHocData ?? []);
   }
@@ -1310,15 +1324,17 @@ export default function AdminDashboard() {
             <div className="mb-6">
               <h2 className="text-xl font-bold text-stone-800">My Contacts</h2>
               <p className="text-sm text-stone-500 mt-1">
-                Week of{" "}
-                {new Date(getThisSunday() + "T00:00:00").toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
+                Cycle starting{" "}
+                {myCycleStart
+                  ? new Date(myCycleStart + "T00:00:00").toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      },
+                    )
+                  : "—"}
               </p>
 
               {myAssignments.length > 0 && (
@@ -1334,11 +1350,30 @@ export default function AdminDashboard() {
                         .length > 0 &&
                         ` · ${myAssignments.filter((a) => a.status === "pending").length} remaining`}
                     </span>
-                    {myAssignments.every((a) => a.status === "completed") && (
-                      <span className="text-green-600 font-semibold">
-                        All done! 🎉
-                      </span>
-                    )}
+                    {(() => {
+                      const myDaysLeft = myCycleStart
+                        ? getDaysLeftInCycle(myCycleStart)
+                        : null;
+                      return myAssignments.every(
+                        (a) => a.status === "completed",
+                      ) ? (
+                        <span className="text-green-600 font-semibold">
+                          All done! 🎉
+                        </span>
+                      ) : myDaysLeft !== null ? (
+                        <span
+                          className={`font-medium px-2 py-0.5 rounded-full ${
+                            myDaysLeft <= 1
+                              ? "bg-red-100 text-red-700"
+                              : myDaysLeft <= 3
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-stone-100 text-stone-500"
+                          }`}
+                        >
+                          {myDaysLeft} day{myDaysLeft !== 1 ? "s" : ""} left
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="w-full bg-stone-100 rounded-full h-2">
                     <div
@@ -1370,10 +1405,10 @@ export default function AdminDashboard() {
                   </svg>
                 </div>
                 <h3 className="text-stone-600 font-medium mb-1">
-                  No contacts assigned yet this week
+                  No contacts assigned yet this cycle
                 </h3>
                 <p className="text-stone-400 text-sm">
-                  Check back after Sunday when new assignments are generated.
+                  Check back after Friday when new assignments are generated.
                 </p>
               </div>
             ) : (

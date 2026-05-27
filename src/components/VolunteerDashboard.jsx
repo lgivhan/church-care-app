@@ -1,22 +1,28 @@
 // ============================================================
 // VolunteerDashboard.jsx
 //
-// Main view for volunteers. Shows their weekly assignments
+// Main view for volunteers. Shows their 2-week cycle assignments
 // as contact cards. Volunteers can log contacts and edit notes.
 //
 // Data fetching:
-//   - Fetches assignments for the current week where
+//   - Fetches assignments within a 14-day window where
 //     caller_id = auth.uid()
-//   - Joins member data via Supabase foreign key relationship
+//   - Derives the actual cycle start from the returned data
 //   - Fetches existing contact_logs for pre-filling edit modal
 //
-// Week calculation matches the SQL function:
-//   Most recent Sunday = today minus today's day-of-week index
+// Cycle calculation:
+//   The SQL function generates assignments every 2 weeks.
+//   The frontend queries week_starting in a 14-day window to
+//   find whichever cycle is currently active.
 // ============================================================
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { getThisSunday, sortAssignments } from "../lib/utils";
+import {
+  getThisSunday,
+  sortAssignments,
+  getDaysLeftInCycle,
+} from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 
@@ -46,6 +52,7 @@ export default function VolunteerDashboard() {
   const [assignments, setAssignments] = useState([]);
   const [contactLogs, setContactLogs] = useState({}); // keyed by assignment_id
   const [adHocLogs, setAdHocLogs] = useState([]);
+  const [cycleStart, setCycleStart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -54,8 +61,6 @@ export default function VolunteerDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
-
-  const weekStarting = getThisSunday();
 
   useEffect(() => {
     loadDashboard();
@@ -89,8 +94,16 @@ export default function VolunteerDashboard() {
 
       setProfile(profileData);
 
-      // Load this week's assignments with member details
-      // Supabase resolves the foreign key to members automatically
+      // Build a 14-day window ending at today's Sunday to find the active cycle.
+      const thisSunday = getThisSunday();
+      const cycleWindowStart = (() => {
+        const d = new Date(thisSunday + "T00:00:00");
+        d.setDate(d.getDate() - 13);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      })();
+
+      // Load this cycle's assignments with member details.
+      // Uses a 14-day window so it finds the cycle even mid-cycle.
       const { data: assignmentData, error: assignmentError } = await supabase
         .from("assignments")
         .select(
@@ -113,14 +126,19 @@ export default function VolunteerDashboard() {
         `,
         )
         .eq("caller_id", user.id)
-        .eq("week_starting", weekStarting)
+        .lte("week_starting", thisSunday)
+        .gte("week_starting", cycleWindowStart)
         .order("status", { ascending: true });
 
       if (assignmentError) throw assignmentError;
 
+      // Derive the cycle start from the data so "days left" is accurate.
+      const activeCycleStart = assignmentData?.[0]?.week_starting ?? thisSunday;
+      setCycleStart(activeCycleStart);
+
       setAssignments(sortAssignments(assignmentData ?? []));
 
-      // Load contact logs for this week's assignments so Edit Notes
+      // Load contact logs for this cycle's assignments so Edit Notes
       // can pre-fill the modal with existing notes
       if (assignmentData && assignmentData.length > 0) {
         const assignmentIds = assignmentData.map((a) => a.id);
@@ -138,9 +156,10 @@ export default function VolunteerDashboard() {
         setContactLogs(logMap);
       }
 
-      const nextWeekStarting = (() => {
-        const d = new Date(weekStarting + "T00:00:00");
-        d.setDate(d.getDate() + 7);
+      // Ad-hoc contacts span the full 14-day cycle window
+      const nextCycleStarting = (() => {
+        const d = new Date(activeCycleStart + "T00:00:00");
+        d.setDate(d.getDate() + 14);
         return d.toISOString();
       })();
 
@@ -158,8 +177,8 @@ export default function VolunteerDashboard() {
         )
         .eq("volunteer_id", user.id)
         .is("assignment_id", null)
-        .gte("contacted_at", weekStarting + "T00:00:00.000Z")
-        .lt("contacted_at", nextWeekStarting);
+        .gte("contacted_at", activeCycleStart + "T00:00:00.000Z")
+        .lt("contacted_at", nextCycleStarting);
 
       if (adHocError) throw adHocError;
       setAdHocLogs(adHocData ?? []);
@@ -218,6 +237,7 @@ export default function VolunteerDashboard() {
   const completedCount = assignments.filter(
     (a) => a.status === "completed",
   ).length;
+  const daysLeft = cycleStart ? getDaysLeftInCycle(cycleStart) : null;
 
   // --------------------------------------------------------
   // Render states
@@ -272,18 +292,20 @@ export default function VolunteerDashboard() {
           </div>
         )}
 
-        {/* Week heading + progress */}
+        {/* Cycle heading + progress */}
         <div className="mb-6">
           <h2 className="text-xl font-bold text-stone-800">
-            This Week's Contacts
+            This Cycle's Contacts
           </h2>
           <p className="text-sm text-stone-500 mt-1">
-            Week of{" "}
-            {new Date(weekStarting + "T00:00:00").toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
+            Cycle starting{" "}
+            {cycleStart
+              ? new Date(cycleStart + "T00:00:00").toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—"}
           </p>
 
           {/* Progress bar — only shown if there are assignments */}
@@ -294,11 +316,25 @@ export default function VolunteerDashboard() {
                   {completedCount} of {assignments.length} contacted
                   {pendingCount > 0 && ` · ${pendingCount} remaining`}
                 </span>
-                {completedCount === assignments.length && (
-                  <span className="text-green-600 font-medium">
-                    All done! 🎉
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {completedCount === assignments.length ? (
+                    <span className="text-green-600 font-medium">
+                      All done! 🎉
+                    </span>
+                  ) : daysLeft !== null ? (
+                    <span
+                      className={`font-medium px-2 py-0.5 rounded-full ${
+                        daysLeft <= 1
+                          ? "bg-red-100 text-red-700"
+                          : daysLeft <= 3
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-stone-100 text-stone-500"
+                      }`}
+                    >
+                      {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div className="w-full bg-stone-100 rounded-full h-2">
                 <div
@@ -331,7 +367,7 @@ export default function VolunteerDashboard() {
               </svg>
             </div>
             <h3 className="text-stone-600 font-medium mb-1">
-              No contacts assigned yet this week
+              No contacts assigned yet this cycle
             </h3>
             <p className="text-stone-400 text-sm">
               Check back after Friday when new assignments are generated.

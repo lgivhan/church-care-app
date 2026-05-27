@@ -21,6 +21,14 @@ export function getThisSunday() {
 // Used in MemberCard (volunteer view) and AdminDashboard (admin view).
 // Centralizing here prevents the mapping from getting out of sync.
 // ============================================================
+export function getDaysLeftInCycle(cycleStartStr) {
+  const start = new Date(cycleStartStr + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysPast = Math.round((today - start) / (1000 * 60 * 60 * 24));
+  return Math.max(0, 14 - daysPast);
+}
+
 export function sortAssignments(list) {
   return [...list].sort(
     (a, b) =>
