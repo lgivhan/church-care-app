@@ -60,7 +60,7 @@ export function getMembershipLabel(membershipType) {
     return { label: "Moved Away", color: "bg-orange-100 text-orange-700" };
   }
   if (t.includes("doesn't attend") || t.includes("does not attend")) {
-    return { label: "Inactive", color: "bg-red-100 text-red-700" };
+    return { label: "Inactive Member", color: "bg-red-100 text-red-700" };
   }
   if (t.includes("online")) {
     return { label: "Online Member", color: "bg-cyan-100 text-cyan-700" };
