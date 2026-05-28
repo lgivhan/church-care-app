@@ -18,11 +18,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import {
-  getThisFriday,
-  sortAssignments,
-  getDaysLeftInCycle,
-} from "../lib/utils";
+import { sortAssignments, getDaysLeftInCycle } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 
