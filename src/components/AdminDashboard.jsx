@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase, getTokenSafe, getAccessToken } from "../lib/supabaseClient";
 import {
-  getThisSunday,
+  getThisFriday,
   sortAssignments,
   getDaysLeftInCycle,
 } from "../lib/utils";
@@ -49,22 +49,21 @@ function formatDateTime(dateStr) {
   });
 }
 
-function getRecentSundays(count = 8) {
-  const sundays = [];
+function getRecentFridays(count = 8) {
+  const fridays = [];
   const today = new Date();
-  const dayOfWeek = today.getDay();
-  const thisSunday = new Date(today);
-  thisSunday.setDate(today.getDate() - dayOfWeek);
+  const thisFriday = new Date(today);
+  thisFriday.setDate(today.getDate() - ((today.getDay() - 5 + 7) % 7));
 
   for (let i = 0; i < count; i++) {
-    const sunday = new Date(thisSunday);
-    sunday.setDate(thisSunday.getDate() - i * 7);
-    const year = sunday.getFullYear();
-    const month = String(sunday.getMonth() + 1).padStart(2, "0");
-    const day = String(sunday.getDate()).padStart(2, "0");
-    sundays.push(`${year}-${month}-${day}`);
+    const friday = new Date(thisFriday);
+    friday.setDate(thisFriday.getDate() - i * 14);
+    const year = friday.getFullYear();
+    const month = String(friday.getMonth() + 1).padStart(2, "0");
+    const day = String(friday.getDate()).padStart(2, "0");
+    fridays.push(`${year}-${month}-${day}`);
   }
-  return sundays;
+  return fridays;
 }
 
 function formatContactMethod(method) {
@@ -169,8 +168,8 @@ function GreenNotice({ children }) {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedWeek, setSelectedWeek] = useState(getThisSunday());
-  const recentSundays = getRecentSundays();
+  const [selectedWeek, setSelectedWeek] = useState(getThisFriday());
+  const recentFridays = getRecentFridays();
 
   const [pendingVolunteers, setPendingVolunteers] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -455,10 +454,11 @@ export default function AdminDashboard() {
     setMyUserId(user.id);
     setAdminUserId(user.id);
 
-    // Build a 14-day window to find the active cycle
-    const thisSunday = getThisSunday();
+    // Build a 14-day window ending today to find the active cycle.
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const cycleWindowStart = (() => {
-      const d = new Date(thisSunday + "T00:00:00");
+      const d = new Date(today);
       d.setDate(d.getDate() - 13);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     })();
@@ -484,11 +484,11 @@ export default function AdminDashboard() {
     `,
       )
       .eq("caller_id", user.id)
-      .lte("week_starting", thisSunday)
+      .lte("week_starting", todayStr)
       .gte("week_starting", cycleWindowStart)
       .order("status", { ascending: true });
 
-    const activeCycleStart = assignmentData?.[0]?.week_starting ?? thisSunday;
+    const activeCycleStart = assignmentData?.[0]?.week_starting ?? todayStr;
     setMyCycleStart(activeCycleStart);
     setMyAssignments(sortAssignments(assignmentData ?? []));
 
@@ -1252,10 +1252,10 @@ export default function AdminDashboard() {
               onChange={(e) => setSelectedWeek(e.target.value)}
               className="px-3 py-1.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
             >
-              {recentSundays.map((sunday) => (
-                <option key={sunday} value={sunday}>
-                  {formatDate(sunday)}
-                  {sunday === getThisSunday() ? " (current)" : ""}
+              {recentFridays.map((friday) => (
+                <option key={friday} value={friday}>
+                  {formatDate(friday)}
+                  {friday === getThisFriday() ? " (current)" : ""}
                 </option>
               ))}
             </select>

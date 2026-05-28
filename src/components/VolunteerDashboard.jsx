@@ -19,7 +19,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import {
-  getThisSunday,
+  getThisFriday,
   sortAssignments,
   getDaysLeftInCycle,
 } from "../lib/utils";
@@ -94,10 +94,13 @@ export default function VolunteerDashboard() {
 
       setProfile(profileData);
 
-      // Build a 14-day window ending at today's Sunday to find the active cycle.
-      const thisSunday = getThisSunday();
+      // Build a 14-day window ending today to find the active cycle.
+      // Using today (not a day-of-week anchor) so the query works regardless
+      // of what day the cycle started on.
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
       const cycleWindowStart = (() => {
-        const d = new Date(thisSunday + "T00:00:00");
+        const d = new Date(today);
         d.setDate(d.getDate() - 13);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       })();
@@ -126,14 +129,14 @@ export default function VolunteerDashboard() {
         `,
         )
         .eq("caller_id", user.id)
-        .lte("week_starting", thisSunday)
+        .lte("week_starting", todayStr)
         .gte("week_starting", cycleWindowStart)
         .order("status", { ascending: true });
 
       if (assignmentError) throw assignmentError;
 
       // Derive the cycle start from the data so "days left" is accurate.
-      const activeCycleStart = assignmentData?.[0]?.week_starting ?? thisSunday;
+      const activeCycleStart = assignmentData?.[0]?.week_starting ?? todayStr;
       setCycleStart(activeCycleStart);
 
       setAssignments(sortAssignments(assignmentData ?? []));

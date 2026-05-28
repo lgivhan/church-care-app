@@ -1,18 +1,17 @@
 // ============================================================
-// Returns this week's Sunday as a YYYY-MM-DD string.
-// JavaScript's getDay() returns 0 for Sunday, so we subtract
-// the current day index to roll back to Sunday.
+// Returns the most recent Friday as a YYYY-MM-DD string.
+// Cycles are anchored to Friday — distribution day and cycle
+// start are the same day.
 // ============================================================
 
-export function getThisSunday() {
+export function getThisFriday() {
   const today = new Date();
-  const dayOfWeek = today.getDay();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - dayOfWeek);
+  const friday = new Date(today);
+  friday.setDate(today.getDate() - ((today.getDay() - 5 + 7) % 7));
 
-  const year = sunday.getFullYear();
-  const month = String(sunday.getMonth() + 1).padStart(2, "0");
-  const day = String(sunday.getDate()).padStart(2, "0");
+  const year = friday.getFullYear();
+  const month = String(friday.getMonth() + 1).padStart(2, "0");
+  const day = String(friday.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
