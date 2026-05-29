@@ -150,7 +150,7 @@ export default function ContactModal({
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
               Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              Prefer: "return=minimal",
+              Prefer: "return=representation",
             },
             body: JSON.stringify({
               member_id: assignment.member_id,
@@ -167,6 +167,8 @@ export default function ContactModal({
           const errText = await response.text();
           throw new Error(`Insert failed: ${errText}`);
         }
+
+        const [insertedLog] = await response.json();
 
         const assignmentResponse = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/assignments?id=eq.${assignment.id}`,
@@ -197,6 +199,7 @@ export default function ContactModal({
           assignmentId: assignment.id,
           completedAt: contactedAt,
           log: {
+            id: insertedLog?.id,
             assignment_id: assignment.id,
             contacted_at: contactedAt,
             ...logPayload,
