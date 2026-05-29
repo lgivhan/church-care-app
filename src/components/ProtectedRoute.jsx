@@ -50,7 +50,8 @@ export default function ProtectedRoute({ children, requiredRole }) {
             supabase
               .from("profiles")
               .update({ invite_pending: false })
-              .eq("id", session.user.id);
+              .eq("id", session.user.id)
+              .then();
           }
         }
       } catch (err) {
@@ -92,7 +93,8 @@ export default function ProtectedRoute({ children, requiredRole }) {
             supabase
               .from("profiles")
               .update({ invite_pending: false })
-              .eq("id", session.user.id);
+              .eq("id", session.user.id)
+              .then();
           }
         } else {
           setProfile(null);
