@@ -30,14 +30,13 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify the caller is an authenticated admin
+    // Verify the caller is an authenticated admin.
+    // Use the service role client's getUser(token) — works with both symmetric
+    // and asymmetric (RS256) JWTs, unlike a anon-key client.
     const authHeader = req.headers.get("Authorization") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const { data: callerData, error: callerAuthError } =
-      await userClient.auth.getUser();
+      await supabase.auth.getUser(token);
     if (callerAuthError || !callerData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,

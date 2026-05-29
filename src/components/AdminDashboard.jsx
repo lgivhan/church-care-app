@@ -49,7 +49,7 @@ function formatDateTime(dateStr) {
   });
 }
 
-function getRecentFridays(count = 8) {
+function getRecentFridays(count = 16) {
   const fridays = [];
   const today = new Date();
   const thisFriday = new Date(today);
@@ -57,7 +57,7 @@ function getRecentFridays(count = 8) {
 
   for (let i = 0; i < count; i++) {
     const friday = new Date(thisFriday);
-    friday.setDate(thisFriday.getDate() - i * 14);
+    friday.setDate(thisFriday.getDate() - i * 7);
     const year = friday.getFullYear();
     const month = String(friday.getMonth() + 1).padStart(2, "0");
     const day = String(friday.getDate()).padStart(2, "0");
@@ -168,7 +168,8 @@ function GreenNotice({ children }) {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedWeek, setSelectedWeek] = useState(getThisFriday());
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [activeCycleWeek, setActiveCycleWeek] = useState(null);
   const recentFridays = getRecentFridays();
 
   const [pendingVolunteers, setPendingVolunteers] = useState([]);
@@ -245,7 +246,35 @@ export default function AdminDashboard() {
     toastTimerRef.current = setTimeout(() => setToast(null), 4000);
   }
 
+  // On mount: detect the active cycle (same 14-day window logic as volunteer
+  // dashboard) so the default selection always shows real assignments even on
+  // mid-cycle Fridays when no new cycle has started yet.
   useEffect(() => {
+    async function detectActiveCycle() {
+      const today = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const windowDate = new Date(today);
+      windowDate.setDate(today.getDate() - 13);
+      const windowStr = `${windowDate.getFullYear()}-${pad(windowDate.getMonth() + 1)}-${pad(windowDate.getDate())}`;
+
+      const { data } = await supabase
+        .from("assignments")
+        .select("week_starting")
+        .lte("week_starting", todayStr)
+        .gte("week_starting", windowStr)
+        .order("week_starting", { ascending: false })
+        .limit(1);
+
+      const detected = data?.[0]?.week_starting ?? getThisFriday();
+      setActiveCycleWeek(detected);
+      setSelectedWeek(detected);
+    }
+    detectActiveCycle();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedWeek) return;
     loadAll();
     setVolunteerSearch("");
     setSelectedVolunteer(null);
@@ -1255,7 +1284,7 @@ export default function AdminDashboard() {
               {recentFridays.map((friday) => (
                 <option key={friday} value={friday}>
                   {formatDate(friday)}
-                  {friday === getThisFriday() ? " (current)" : ""}
+                  {friday === activeCycleWeek ? " (current)" : ""}
                 </option>
               ))}
             </select>
