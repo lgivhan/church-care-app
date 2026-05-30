@@ -71,7 +71,7 @@ export function getMembershipLabel(membershipType) {
   if (t.includes("guest speaker")) {
     return { label: "Guest Speaker", color: "bg-gray-100 text-gray-600" };
   }
-  if (t.includes("used to attend")) {
+  if (t.includes("used to attend") || t.includes("haitian")) {
     return { label: "Former Attender", color: "bg-orange-100 text-orange-700" };
   }
   if (t.includes("interest")) {
