@@ -1319,6 +1319,49 @@ export default function AdminDashboard() {
               />
             </div>
 
+            {assignments.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between text-xs text-stone-500 mb-1.5">
+                  <span>
+                    {completedAssignments.length} of {assignments.length}{" "}
+                    contacted
+                    {pendingAssignments.length > 0 &&
+                      ` · ${pendingAssignments.length} remaining`}
+                  </span>
+                  {completedAssignments.length === assignments.length ? (
+                    <span className="text-green-600 font-semibold">
+                      All done! 🎉
+                    </span>
+                  ) : selectedWeek === activeCycleWeek ? (
+                    (() => {
+                      const daysLeft = getDaysLeftInCycle(selectedWeek);
+                      return daysLeft !== null ? (
+                        <span
+                          className={`font-medium px-2 py-0.5 rounded-full ${
+                            daysLeft <= 1
+                              ? "bg-red-100 text-red-700"
+                              : daysLeft <= 3
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-stone-100 text-stone-500"
+                          }`}
+                        >
+                          {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
+                        </span>
+                      ) : null;
+                    })()
+                  ) : null}
+                </div>
+                <div className="w-full bg-stone-100 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-amber-400 to-green-500 h-2 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${(completedAssignments.length / assignments.length) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {membersNoContact.length > 0 && (
               <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl">
                 <p className="text-sm font-semibold text-orange-800 mb-1">
