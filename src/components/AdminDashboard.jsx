@@ -19,6 +19,7 @@ import {
   getThisFriday,
   sortAssignments,
   getDaysLeftInCycle,
+  getMembershipLabel,
 } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -1104,7 +1105,11 @@ export default function AdminDashboard() {
   });
 
   const contactTypes = [
-    ...new Set(allMembers.map((m) => m.membership_type).filter(Boolean)),
+    ...new Set(
+      allMembers
+        .map((m) => getMembershipLabel(m.membership_type)?.label)
+        .filter(Boolean),
+    ),
   ].sort();
 
   function handleContactsSort(col) {
@@ -1117,7 +1122,10 @@ export default function AdminDashboard() {
 
   const contactsRows = allMembers
     .filter((m) => {
-      if (contactsTypeFilter && m.membership_type !== contactsTypeFilter)
+      if (
+        contactsTypeFilter &&
+        getMembershipLabel(m.membership_type)?.label !== contactsTypeFilter
+      )
         return false;
       if (contactsSearch.trim()) {
         const q = contactsSearch.trim().toLowerCase();
@@ -1130,6 +1138,7 @@ export default function AdminDashboard() {
       id: m.id,
       name: `${m.first_name} ${m.last_name}`,
       membership_type: m.membership_type,
+      membershipLabel: getMembershipLabel(m.membership_type)?.label ?? null,
       lastContacted: lastContactedMap[m.id] ?? null,
       lastHeardFrom: lastHeardFromMap[m.id] ?? null,
     }))
@@ -1140,7 +1149,7 @@ export default function AdminDashboard() {
       if (col === "membership_type") {
         return (
           mult *
-          (a.membership_type ?? "").localeCompare(b.membership_type ?? "")
+          (a.membershipLabel ?? "").localeCompare(b.membershipLabel ?? "")
         );
       }
       const field =
@@ -2357,9 +2366,9 @@ export default function AdminDashboard() {
                         <p className="font-semibold text-stone-800 text-sm">
                           {row.name}
                         </p>
-                        {row.membership_type && (
+                        {row.membershipLabel && (
                           <span className="shrink-0 text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                            {row.membership_type}
+                            {row.membershipLabel}
                           </span>
                         )}
                       </div>
@@ -2446,7 +2455,7 @@ export default function AdminDashboard() {
                               {row.name}
                             </td>
                             <td className="px-4 py-3 text-stone-500 whitespace-nowrap">
-                              {row.membership_type ?? (
+                              {row.membershipLabel ?? (
                                 <span className="text-stone-300">—</span>
                               )}
                             </td>
