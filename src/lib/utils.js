@@ -43,14 +43,17 @@ export function getMembershipLabel(membershipType) {
   if (t.includes("child") || t.includes("teen")) {
     return { label: "Child/Teen", color: "bg-gray-100 text-gray-500" };
   }
-  if (t.includes("regular attends") || t.includes("regular attendee")) {
+  if (
+    t.includes("regular attends") ||
+    t.includes("regular attendee") ||
+    t.includes("haitian church")
+  ) {
     return { label: "Active Member", color: "bg-green-100 text-green-700" };
   }
   if (
     t.includes("attends occasionally") ||
     t.includes("non-member attends") ||
-    t.includes("non member attends") ||
-    t.includes("haitian")
+    t.includes("non member attends")
   ) {
     return { label: "Occasional Attender", color: "bg-blue-100 text-blue-700" };
   }
