@@ -49,7 +49,8 @@ export function getMembershipLabel(membershipType) {
   if (
     t.includes("attends occasionally") ||
     t.includes("non-member attends") ||
-    t.includes("non member attends")
+    t.includes("non member attends") ||
+    t.includes("haitian")
   ) {
     return { label: "Occasional Attender", color: "bg-blue-100 text-blue-700" };
   }
@@ -71,7 +72,7 @@ export function getMembershipLabel(membershipType) {
   if (t.includes("guest speaker")) {
     return { label: "Guest Speaker", color: "bg-gray-100 text-gray-600" };
   }
-  if (t.includes("used to attend") || t.includes("haitian")) {
+  if (t.includes("used to attend")) {
     return { label: "Former Attender", color: "bg-orange-100 text-orange-700" };
   }
   if (t.includes("interest")) {
