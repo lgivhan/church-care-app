@@ -518,11 +518,18 @@ export default function AdminDashboard() {
       .eq("caller_id", user.id)
       .lte("week_starting", todayStr)
       .gte("week_starting", cycleWindowStart)
+      .order("week_starting", { ascending: false })
       .order("status", { ascending: true });
 
     const activeCycleStart = assignmentData?.[0]?.week_starting ?? todayStr;
     setMyCycleStart(activeCycleStart);
-    setMyAssignments(sortAssignments(assignmentData ?? []));
+    setMyAssignments(
+      sortAssignments(
+        (assignmentData ?? []).filter(
+          (a) => a.week_starting === activeCycleStart,
+        ),
+      ),
+    );
 
     if (assignmentData && assignmentData.length > 0) {
       const assignmentIds = assignmentData.map((a) => a.id);
