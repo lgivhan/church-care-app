@@ -411,7 +411,9 @@ export default function AdminDashboard() {
   async function loadAllMembers() {
     const { data } = await supabase
       .from("members")
-      .select("id, first_name, last_name, membership_type")
+      .select(
+        "id, first_name, last_name, membership_type, excluded_from_assignments",
+      )
       .order("last_name", { ascending: true });
     setAllMembers(data ?? []);
   }
@@ -635,6 +637,30 @@ export default function AdminDashboard() {
       }
     } catch {
       showToast("Failed to deactivate volunteer. Please try again.", "error");
+    }
+  }
+
+  async function toggleMemberExclusion(memberId, currentlyExcluded) {
+    try {
+      const { error } = await supabase
+        .from("members")
+        .update({ excluded_from_assignments: !currentlyExcluded })
+        .eq("id", memberId);
+      if (error) throw error;
+      setAllMembers((prev) =>
+        prev.map((m) =>
+          m.id === memberId
+            ? { ...m, excluded_from_assignments: !currentlyExcluded }
+            : m,
+        ),
+      );
+      showToast(
+        currentlyExcluded
+          ? "Member re-included in assignments."
+          : "Member excluded from assignments.",
+      );
+    } catch {
+      showToast("Failed to update member. Please try again.", "error");
     }
   }
 
@@ -1141,6 +1167,7 @@ export default function AdminDashboard() {
       membershipLabel: getMembershipLabel(m.membership_type)?.label ?? null,
       lastContacted: lastContactedMap[m.id] ?? null,
       lastHeardFrom: lastHeardFromMap[m.id] ?? null,
+      excluded: m.excluded_from_assignments ?? false,
     }))
     .sort((a, b) => {
       const { col, dir } = contactsSort;
@@ -2360,7 +2387,7 @@ export default function AdminDashboard() {
                   {contactsRows.map((row) => (
                     <div
                       key={row.id}
-                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
+                      className={`bg-white rounded-2xl border border-stone-100 p-4 shadow-sm ${row.excluded ? "opacity-60" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="font-semibold text-stone-800 text-sm">
@@ -2412,6 +2439,29 @@ export default function AdminDashboard() {
                           )}
                         </p>
                       </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        {row.excluded ? (
+                          <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                            Excluded from assignments
+                          </span>
+                        ) : (
+                          <span className="text-xs text-stone-400">
+                            Included in assignments
+                          </span>
+                        )}
+                        <button
+                          onClick={() =>
+                            toggleMemberExclusion(row.id, row.excluded)
+                          }
+                          className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
+                            row.excluded
+                              ? "bg-green-50 text-green-700 hover:bg-green-100"
+                              : "bg-red-50 text-red-700 hover:bg-red-100"
+                          }`}
+                        >
+                          {row.excluded ? "Re-include" : "Exclude"}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2419,7 +2469,7 @@ export default function AdminDashboard() {
                 {/* Desktop table */}
                 <SectionCard className="hidden sm:block">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[680px]">
+                    <table className="w-full text-sm min-w-[800px]">
                       <TableHeader>
                         {[
                           { col: "name", label: "Contact Name" },
@@ -2444,12 +2494,15 @@ export default function AdminDashboard() {
                             </span>
                           </th>
                         ))}
+                        <th className="text-left px-4 py-3 text-stone-500 font-medium text-xs uppercase tracking-wide">
+                          Assignments
+                        </th>
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
                         {contactsRows.map((row) => (
                           <tr
                             key={row.id}
-                            className="hover:bg-amber-50/30 transition-colors"
+                            className={`hover:bg-amber-50/30 transition-colors ${row.excluded ? "opacity-60" : ""}`}
                           >
                             <td className="px-4 py-3 font-medium text-stone-800 whitespace-nowrap">
                               {row.name}
@@ -2494,6 +2547,27 @@ export default function AdminDashboard() {
                               ) : (
                                 <span className="text-stone-400">Never</span>
                               )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                {row.excluded && (
+                                  <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                                    Excluded
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() =>
+                                    toggleMemberExclusion(row.id, row.excluded)
+                                  }
+                                  className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
+                                    row.excluded
+                                      ? "bg-green-50 text-green-700 hover:bg-green-100"
+                                      : "bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
+                                  }`}
+                                >
+                                  {row.excluded ? "Re-include" : "Exclude"}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
