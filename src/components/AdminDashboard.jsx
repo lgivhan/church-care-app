@@ -588,14 +588,21 @@ export default function AdminDashboard() {
 
   async function approveVolunteer(id) {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_active: true })
-        .eq("id", id);
-
-      // Throw so the outer catch surfaces the error rather than silently
-      // proceeding to the assignment generation step with a bad state.
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ is_active: true }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
 
       // Best-effort: regenerate assignments for the newly approved volunteer.
       // Wrapped in its own try/catch so a generation failure never blocks
@@ -631,11 +638,21 @@ export default function AdminDashboard() {
     const { id } = deactivateTarget;
     setDeactivateTarget(null);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_active: false })
-        .eq("id", id);
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ is_active: false }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
       const deactivated = volunteers.find((v) => v.id === id);
       setVolunteers((prev) => prev.filter((v) => v.id !== id));
       if (deactivated) {
@@ -658,21 +675,39 @@ export default function AdminDashboard() {
 
   async function toggleMemberExclusion(memberId, currentlyExcluded) {
     try {
-      const { error } = await supabase
-        .from("members")
-        .update({ excluded_from_assignments: !currentlyExcluded })
-        .eq("id", memberId);
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/members?id=eq.${memberId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            excluded_from_assignments: !currentlyExcluded,
+          }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
 
       // When excluding, immediately remove any pending assignment for this
       // member in the current cycle so volunteers don't see them anymore.
       if (!currentlyExcluded && activeCycleWeek) {
-        await supabase
-          .from("assignments")
-          .delete()
-          .eq("member_id", memberId)
-          .eq("week_starting", activeCycleWeek)
-          .eq("status", "pending");
+        const delRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/assignments?member_id=eq.${memberId}&week_starting=eq.${activeCycleWeek}&status=eq.pending`,
+          {
+            method: "DELETE",
+            headers: {
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${token}`,
+              Prefer: "return=minimal",
+            },
+          },
+        );
+        if (!delRes.ok) throw new Error(await delRes.text());
       }
 
       setAllMembers((prev) =>
@@ -930,11 +965,21 @@ export default function AdminDashboard() {
 
   async function resolvePrayerRequest(id) {
     try {
-      const { error } = await supabase
-        .from("contact_logs")
-        .update({ prayer_request_resolved: true })
-        .eq("id", id);
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ prayer_request_resolved: true }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
       loadPrayerRequests();
     } catch {
       showToast("Failed to update prayer request. Please try again.", "error");
@@ -943,11 +988,21 @@ export default function AdminDashboard() {
 
   async function resolveFollowUp(id) {
     try {
-      const { error } = await supabase
-        .from("contact_logs")
-        .update({ follow_up_resolved: true })
-        .eq("id", id);
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ follow_up_resolved: true }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
       loadFollowUps();
     } catch {
       showToast("Failed to update follow-up. Please try again.", "error");

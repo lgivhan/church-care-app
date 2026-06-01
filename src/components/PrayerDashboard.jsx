@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, getAccessToken } from "../lib/supabaseClient";
 
 function HeartIcon({ className }) {
   return (
@@ -84,11 +84,21 @@ export default function PrayerDashboard() {
 
   async function handleResolve(id) {
     try {
-      const { error } = await supabase
-        .from("contact_logs")
-        .update({ prayer_request_resolved: true })
-        .eq("id", id);
-      if (error) throw error;
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ prayer_request_resolved: true }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
       loadPrayerRequests();
     } catch {
       alert("Failed to update prayer request. Please try again.");
