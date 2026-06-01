@@ -305,7 +305,12 @@ export default function AdminDashboard() {
         loadAllMembers(),
       ]);
     } catch (err) {
-      setError("Failed to load dashboard data. Please refresh.");
+      setError(
+        "Failed to load dashboard data. Please refresh." +
+          (import.meta.env.VITE_SUPPORT_PHONE
+            ? ` If it keeps happening, text Lee a screenshot at ${import.meta.env.VITE_SUPPORT_PHONE}.`
+            : ""),
+      );
       console.error(err);
     } finally {
       setLoading(false);
@@ -739,7 +744,15 @@ export default function AdminDashboard() {
             is_non_technical: true,
           };
 
-      const token = await getTokenSafe();
+      const token = getAccessToken();
+      if (!token) {
+        clearTimeout(timeoutId);
+        setAddingVolunteer(false);
+        setAddVolunteerError(
+          "Your session has expired. Please sign out and sign back in.",
+        );
+        return;
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/createVolunteer`,
@@ -808,14 +821,22 @@ export default function AdminDashboard() {
 
   async function sendPendingInvites() {
     setShowSendInvitesConfirm(false);
+
+    const token = getAccessToken();
+    if (!token) {
+      showToast(
+        "Your session has expired. Please sign out and sign back in.",
+        "error",
+      );
+      return;
+    }
+
     setSendingInvites(true);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
-      const token = await getTokenSafe();
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
         {
@@ -840,10 +861,13 @@ export default function AdminDashboard() {
         prev.map((v) => ({ ...v, invite_pending: false })),
       );
     } catch (err) {
+      const support = import.meta.env.VITE_SUPPORT_PHONE
+        ? ` Text Lee a screenshot at ${import.meta.env.VITE_SUPPORT_PHONE} if it keeps happening.`
+        : "";
       const message =
         err.name === "AbortError"
-          ? "Request timed out. Please check your connection and try again."
-          : "Failed to send invites: " + err.message;
+          ? `Request timed out. Please check your connection and try again.${support}`
+          : "Failed to send invites: " + err.message + support;
       showToast(message, "error");
     } finally {
       clearTimeout(timeoutId);
@@ -852,14 +876,21 @@ export default function AdminDashboard() {
   }
 
   async function sendSingleInvite(volunteerId, volunteerName) {
+    const token = getAccessToken();
+    if (!token) {
+      showToast(
+        "Your session has expired. Please sign out and sign back in.",
+        "error",
+      );
+      return;
+    }
+
     setSendingInviteTo(volunteerId);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     try {
-      const token = await getTokenSafe();
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendPendingInvites`,
         {
@@ -883,10 +914,13 @@ export default function AdminDashboard() {
         `Invite sent to ${volunteerName}. Ask them to check their email.`,
       );
     } catch (err) {
+      const support = import.meta.env.VITE_SUPPORT_PHONE
+        ? ` Text Lee a screenshot at ${import.meta.env.VITE_SUPPORT_PHONE} if it keeps happening.`
+        : "";
       const message =
         err.name === "AbortError"
-          ? "Request timed out. Please check your connection and try again."
-          : "Failed to send invite: " + err.message;
+          ? `Request timed out. Please check your connection and try again.${support}`
+          : "Failed to send invite: " + err.message + support;
       showToast(message, "error");
     } finally {
       clearTimeout(timeoutId);

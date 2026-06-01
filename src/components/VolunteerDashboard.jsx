@@ -184,7 +184,12 @@ export default function VolunteerDashboard() {
       if (adHocError) throw adHocError;
       setAdHocLogs(adHocData ?? []);
     } catch (err) {
-      setError("Failed to load your assignments. Please refresh the page.");
+      setError(
+        "Failed to load your assignments. Please refresh the page." +
+          (import.meta.env.VITE_SUPPORT_PHONE
+            ? ` If it keeps happening, text Lee a screenshot at ${import.meta.env.VITE_SUPPORT_PHONE}.`
+            : ""),
+      );
       console.error(err);
     } finally {
       setLoading(false);

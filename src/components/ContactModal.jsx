@@ -110,7 +110,10 @@ export default function ContactModal({
     const timeout = setTimeout(() => {
       setLoading(false);
       setError(
-        "The request is taking too long. Please check your connection, refresh the page and try again.",
+        "The request is taking too long. Please check your connection and refresh the page." +
+          (import.meta.env.VITE_SUPPORT_PHONE
+            ? ` If it keeps happening, text Lee a screenshot at ${import.meta.env.VITE_SUPPORT_PHONE}.`
+            : ""),
       );
     }, 30000);
 
