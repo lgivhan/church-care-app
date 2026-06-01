@@ -129,20 +129,25 @@ export default function VolunteerDashboard() {
         .eq("caller_id", user.id)
         .lte("week_starting", todayStr)
         .gte("week_starting", cycleWindowStart)
+        .order("week_starting", { ascending: false })
         .order("status", { ascending: true });
 
       if (assignmentError) throw assignmentError;
 
-      // Derive the cycle start from the data so "days left" is accurate.
+      // Derive the cycle start from the most recent week_starting so we
+      // only show one cycle even if two fall within the 14-day window.
       const activeCycleStart = assignmentData?.[0]?.week_starting ?? todayStr;
       setCycleStart(activeCycleStart);
 
-      setAssignments(sortAssignments(assignmentData ?? []));
+      const cycleAssignments = (assignmentData ?? []).filter(
+        (a) => a.week_starting === activeCycleStart,
+      );
+      setAssignments(sortAssignments(cycleAssignments));
 
       // Load contact logs for this cycle's assignments so Edit Notes
       // can pre-fill the modal with existing notes
-      if (assignmentData && assignmentData.length > 0) {
-        const assignmentIds = assignmentData.map((a) => a.id);
+      if (cycleAssignments.length > 0) {
+        const assignmentIds = cycleAssignments.map((a) => a.id);
 
         const { data: logData } = await supabase
           .from("contact_logs")
