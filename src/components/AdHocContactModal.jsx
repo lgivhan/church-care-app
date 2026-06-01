@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, getAccessToken } from "../lib/supabaseClient";
 
 function formatWeekLabel(dateStr) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -56,17 +56,25 @@ export default function AdHocContactModal({
 
   useEffect(() => {
     async function loadData() {
-      const membersResult = await supabase
-        .from("members")
-        .select("id, first_name, last_name, email, phone, address")
-        .order("last_name", { ascending: true });
-
-      if (membersResult.error) {
-        setError(`Could not load contacts: ${membersResult.error.message}`);
-      } else {
-        setMembers(membersResult.data ?? []);
+      try {
+        const token =
+          getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/members?select=id,first_name,last_name,email,phone,address&order=last_name.asc`,
+          {
+            headers: {
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        if (!res.ok) throw new Error(`${res.status}`);
+        setMembers(await res.json());
+      } catch (err) {
+        setError(`Could not load contacts: ${err.message}`);
+      } finally {
+        setMembersLoading(false);
       }
-      setMembersLoading(false);
     }
     loadData();
   }, []);
