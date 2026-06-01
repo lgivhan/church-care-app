@@ -124,12 +124,24 @@ export default function ContactModal({
       };
 
       if (isEditing) {
-        const { error: updateError } = await supabase
-          .from("contact_logs")
-          .update(logPayload)
-          .eq("id", existingLog.id);
+        const updateResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${existingLog.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify(logPayload),
+          },
+        );
 
-        if (updateError) throw updateError;
+        if (!updateResponse.ok) {
+          const errText = await updateResponse.text();
+          throw new Error(`Update failed: ${errText}`);
+        }
       } else {
         if (!userId) {
           clearTimeout(timeout);
