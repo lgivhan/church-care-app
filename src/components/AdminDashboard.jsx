@@ -228,6 +228,7 @@ export default function AdminDashboard() {
     col: "last_contacted",
     dir: "asc",
   });
+  const [showExcludedContacts, setShowExcludedContacts] = useState(false);
 
   // History tab filters
   const [historyMemberSearch, setHistoryMemberSearch] = useState("");
@@ -1196,6 +1197,9 @@ export default function AdminDashboard() {
       if (vb === null) return dir === "asc" ? 1 : -1;
       return mult * (va - vb);
     });
+
+  const activeContactsRows = contactsRows.filter((r) => !r.excluded);
+  const excludedContactsRows = contactsRows.filter((r) => r.excluded);
 
   // --------------------------------------------------------
   // RENDER
@@ -2379,7 +2383,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {contactsRows.length === 0 ? (
+            {activeContactsRows.length === 0 &&
+            excludedContactsRows.length === 0 ? (
               <EmptyState
                 message={
                   contactsSearch || contactsTypeFilter
@@ -2389,12 +2394,12 @@ export default function AdminDashboard() {
               />
             ) : (
               <>
-                {/* Mobile cards */}
+                {/* Mobile cards — active contacts */}
                 <div className="sm:hidden space-y-3">
-                  {contactsRows.map((row) => (
+                  {activeContactsRows.map((row) => (
                     <div
                       key={row.id}
-                      className={`bg-white rounded-2xl border border-stone-100 p-4 shadow-sm ${row.excluded ? "opacity-60" : ""}`}
+                      className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="font-semibold text-stone-800 text-sm">
@@ -2446,34 +2451,21 @@ export default function AdminDashboard() {
                           )}
                         </p>
                       </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        {row.excluded ? (
-                          <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                            Excluded from assignments
-                          </span>
-                        ) : (
-                          <span className="text-xs text-stone-400">
-                            Included in assignments
-                          </span>
-                        )}
+                      <div className="mt-3 flex justify-end">
                         <button
                           onClick={() =>
                             toggleMemberExclusion(row.id, row.excluded)
                           }
-                          className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
-                            row.excluded
-                              ? "bg-green-50 text-green-700 hover:bg-green-100"
-                              : "bg-red-50 text-red-700 hover:bg-red-100"
-                          }`}
+                          className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
                         >
-                          {row.excluded ? "Re-include" : "Exclude"}
+                          Exclude
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Desktop table */}
+                {/* Desktop table — active contacts */}
                 <SectionCard className="hidden sm:block">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[800px]">
@@ -2506,10 +2498,10 @@ export default function AdminDashboard() {
                         </th>
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
-                        {contactsRows.map((row) => (
+                        {activeContactsRows.map((row) => (
                           <tr
                             key={row.id}
-                            className={`hover:bg-amber-50/30 transition-colors ${row.excluded ? "opacity-60" : ""}`}
+                            className="hover:bg-amber-50/30 transition-colors"
                           >
                             <td className="px-4 py-3 font-medium text-stone-800 whitespace-nowrap">
                               {row.name}
@@ -2556,25 +2548,14 @@ export default function AdminDashboard() {
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                {row.excluded && (
-                                  <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                                    Excluded
-                                  </span>
-                                )}
-                                <button
-                                  onClick={() =>
-                                    toggleMemberExclusion(row.id, row.excluded)
-                                  }
-                                  className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
-                                    row.excluded
-                                      ? "bg-green-50 text-green-700 hover:bg-green-100"
-                                      : "bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
-                                  }`}
-                                >
-                                  {row.excluded ? "Re-include" : "Exclude"}
-                                </button>
-                              </div>
+                              <button
+                                onClick={() =>
+                                  toggleMemberExclusion(row.id, row.excluded)
+                                }
+                                className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                Exclude
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -2582,6 +2563,158 @@ export default function AdminDashboard() {
                     </table>
                   </div>
                 </SectionCard>
+
+                {/* Excluded contacts — collapsible */}
+                {excludedContactsRows.length > 0 && (
+                  <div className="mt-6">
+                    <button
+                      onClick={() => setShowExcludedContacts((v) => !v)}
+                      className="flex items-center gap-2 text-sm font-medium text-stone-500 hover:text-stone-700 transition-colors"
+                    >
+                      <svg
+                        className={`w-4 h-4 transition-transform ${showExcludedContacts ? "rotate-90" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                      Excluded Contacts
+                      <span className="ml-1 text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
+                        {excludedContactsRows.length}
+                      </span>
+                    </button>
+
+                    {showExcludedContacts && (
+                      <div className="mt-4">
+                        {/* Mobile cards — excluded */}
+                        <div className="sm:hidden space-y-3">
+                          {excludedContactsRows.map((row) => (
+                            <div
+                              key={row.id}
+                              className="bg-white rounded-2xl border border-stone-100 p-4 shadow-sm opacity-60"
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="font-semibold text-stone-800 text-sm">
+                                  {row.name}
+                                </p>
+                                {row.membershipLabel && (
+                                  <span className="shrink-0 text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                                    {row.membershipLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-3 flex justify-end">
+                                <button
+                                  onClick={() =>
+                                    toggleMemberExclusion(row.id, row.excluded)
+                                  }
+                                  className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-green-50 text-green-700 hover:bg-green-100"
+                                >
+                                  Re-include
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop table — excluded */}
+                        <SectionCard className="hidden sm:block mt-3">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm min-w-[800px]">
+                              <TableHeader>
+                                <Th>Contact Name</Th>
+                                <Th>Type</Th>
+                                <Th>Last Contacted</Th>
+                                <Th>Last Heard From</Th>
+                                <Th>Assignments</Th>
+                              </TableHeader>
+                              <tbody className="divide-y divide-stone-50">
+                                {excludedContactsRows.map((row) => (
+                                  <tr
+                                    key={row.id}
+                                    className="opacity-60 hover:opacity-100 transition-opacity"
+                                  >
+                                    <td className="px-4 py-3 font-medium text-stone-800 whitespace-nowrap">
+                                      {row.name}
+                                    </td>
+                                    <td className="px-4 py-3 text-stone-500 whitespace-nowrap">
+                                      {row.membershipLabel ?? (
+                                        <span className="text-stone-300">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                                      {row.lastContacted ? (
+                                        <>
+                                          {new Date(
+                                            row.lastContacted.date,
+                                          ).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          })}{" "}
+                                          <span className="text-stone-400">
+                                            by{" "}
+                                            {row.lastContacted.volunteer ?? "—"}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="text-stone-400">
+                                          Never
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">
+                                      {row.lastHeardFrom ? (
+                                        <>
+                                          {new Date(
+                                            row.lastHeardFrom.date,
+                                          ).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          })}{" "}
+                                          <span className="text-stone-400">
+                                            by{" "}
+                                            {row.lastHeardFrom.volunteer ?? "—"}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="text-stone-400">
+                                          Never
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <button
+                                        onClick={() =>
+                                          toggleMemberExclusion(
+                                            row.id,
+                                            row.excluded,
+                                          )
+                                        }
+                                        className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-green-50 text-green-700 hover:bg-green-100"
+                                      >
+                                        Re-include
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </SectionCard>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
