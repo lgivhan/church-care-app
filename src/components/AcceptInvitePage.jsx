@@ -26,8 +26,42 @@ export default function AcceptInvitePage() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
+  const [setupError, setSetupError] = useState("");
+
   useEffect(() => {
-    // Supabase processes the invite hash and fires onAuthStateChange automatically
+    // Check for error params Supabase appends on failed invite exchange
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, ""),
+    );
+    const errorDesc =
+      params.get("error_description") ??
+      hashParams.get("error_description") ??
+      params.get("error") ??
+      hashParams.get("error");
+    if (errorDesc) {
+      setSetupError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
+      return;
+    }
+
+    // If Supabase is using PKCE flow, the URL will have ?code= instead of
+    // #access_token=. Exchange it manually — PKCE invite links have no
+    // client-side verifier, so we call exchangeCodeForSession directly.
+    const code = params.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          setSetupError(error.message);
+        } else if (data?.session) {
+          setName(data.session.user.user_metadata?.full_name ?? "");
+          setSessionReady(true);
+        }
+      });
+      return;
+    }
+
+    // Implicit flow: Supabase processes the #access_token hash automatically
+    // and fires onAuthStateChange.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -50,7 +84,17 @@ export default function AcceptInvitePage() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Timeout: if nothing fires after 8 seconds, show a helpful error
+    const timeout = setTimeout(() => {
+      setSetupError(
+        "The setup link may have expired or already been used. Please ask your coordinator to resend the invite.",
+      );
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const firstName = name.split(" ")[0] || "there";
@@ -126,7 +170,36 @@ export default function AcceptInvitePage() {
   if (!sessionReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100 flex items-center justify-center px-4">
-        <p className="text-stone-500 text-sm">Setting up your account…</p>
+        {setupError ? (
+          <div className="max-w-sm w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-6 h-6 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-base font-semibold text-stone-800 mb-2">
+              Link didn't work
+            </h2>
+            <p className="text-sm text-stone-500 leading-relaxed">
+              {setupError}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            <p className="text-stone-500 text-sm">Setting up your account…</p>
+          </div>
+        )}
       </div>
     );
   }
