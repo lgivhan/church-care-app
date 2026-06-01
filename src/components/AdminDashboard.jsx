@@ -25,6 +25,7 @@ import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
 import PrintView from "./PrintView";
 import AdHocContactModal from "./AdHocContactModal";
+import ContactCelebration from "./ContactCelebration";
 
 // ============================================================
 // HELPERS
@@ -237,6 +238,8 @@ export default function AdminDashboard() {
   const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
   const [historyPrayerOnly, setHistoryPrayerOnly] = useState(false);
   const [historyNotHeardFrom, setHistoryNotHeardFrom] = useState(false);
+
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Toast notifications
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -1033,6 +1036,7 @@ export default function AdminDashboard() {
           ),
         ),
       );
+      setShowCelebration(true);
     }
     setMyContactLogs((prev) => ({
       ...prev,
@@ -3417,6 +3421,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {showCelebration && (
+        <ContactCelebration onDone={() => setShowCelebration(false)} />
       )}
     </div>
   );

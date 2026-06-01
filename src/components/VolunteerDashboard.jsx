@@ -21,6 +21,7 @@ import { supabase } from "../lib/supabaseClient";
 import { sortAssignments, getDaysLeftInCycle } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
+import ContactCelebration from "./ContactCelebration";
 
 function HeartIcon({ className }) {
   return (
@@ -57,6 +58,7 @@ export default function VolunteerDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -220,6 +222,7 @@ export default function VolunteerDashboard() {
           ),
         ),
       );
+      setShowCelebration(true);
     }
     setContactLogs((prev) => ({
       ...prev,
@@ -465,6 +468,10 @@ export default function VolunteerDashboard() {
           onSaved={handleSaved}
           userId={currentUserId}
         />
+      )}
+
+      {showCelebration && (
+        <ContactCelebration onDone={() => setShowCelebration(false)} />
       )}
     </div>
   );
