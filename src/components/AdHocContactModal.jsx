@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, getAccessToken } from "../lib/supabaseClient";
+import { getAccessToken } from "../lib/supabaseClient";
 
 function formatWeekLabel(dateStr) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -162,22 +162,36 @@ export default function AdHocContactModal({
     setLoading(true);
 
     try {
-      const { error: insertError } = await supabase
-        .from("contact_logs")
-        .insert({
-          member_id: selectedMember.id,
-          volunteer_id: volunteerId,
-          assignment_id: null,
-          contacted_at: `${selectedWeek}T12:00:00.000Z`,
-          logged_by: adminUserId,
-          notes: notes.trim(),
-          contact_method: contactMethod,
-          needs_follow_up: needsFollowUp,
-          prayer_request: prayerRequest,
-          heard_from: heardFrom,
-        });
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            member_id: selectedMember.id,
+            volunteer_id: volunteerId,
+            assignment_id: null,
+            contacted_at: `${selectedWeek}T12:00:00.000Z`,
+            logged_by: adminUserId,
+            notes: notes.trim(),
+            contact_method: contactMethod,
+            needs_follow_up: needsFollowUp,
+            prayer_request: prayerRequest,
+            heard_from: heardFrom,
+          }),
+        },
+      );
 
-      if (insertError) throw insertError;
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Request failed (${res.status})`);
+      }
 
       onClose();
       onSaved();
