@@ -658,6 +658,18 @@ export default function AdminDashboard() {
         .update({ excluded_from_assignments: !currentlyExcluded })
         .eq("id", memberId);
       if (error) throw error;
+
+      // When excluding, immediately remove any pending assignment for this
+      // member in the current cycle so volunteers don't see them anymore.
+      if (!currentlyExcluded && activeCycleWeek) {
+        await supabase
+          .from("assignments")
+          .delete()
+          .eq("member_id", memberId)
+          .eq("week_starting", activeCycleWeek)
+          .eq("status", "pending");
+      }
+
       setAllMembers((prev) =>
         prev.map((m) =>
           m.id === memberId

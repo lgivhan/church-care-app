@@ -168,6 +168,40 @@ Deno.serve(async (req: Request) => {
       console.log(`Upserted ${upsertedCount} / ${members.length} members`);
     }
 
+    // --------------------------------------------------------
+    // 7. Clean up pending assignments for members who are now
+    //    classified as child or teen in Planning Center.
+    //    These members are excluded from assignment generation,
+    //    but may have been assigned in a prior cycle before their
+    //    membership type changed.
+    // --------------------------------------------------------
+    const childTeenIds = members
+      .filter((m) => {
+        if (!m.membership_type) return false;
+        const t = m.membership_type.toLowerCase();
+        return t.includes("child") || t.includes("teen");
+      })
+      .map((m) => m.id);
+
+    if (childTeenIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("assignments")
+        .delete()
+        .in("member_id", childTeenIds)
+        .eq("status", "pending");
+
+      if (deleteError) {
+        console.warn(
+          "Warning: failed to clean up child/teen assignments:",
+          deleteError.message,
+        );
+      } else {
+        console.log(
+          `Cleaned up pending assignments for ${childTeenIds.length} child/teen members`,
+        );
+      }
+    }
+
     const summary = {
       success: true,
       total_fetched: allPeople.length,
