@@ -26,6 +26,7 @@ import ContactModal from "./ContactModal";
 import PrintView from "./PrintView";
 import AdHocContactModal from "./AdHocContactModal";
 import ContactCelebration from "./ContactCelebration";
+import FAQDrawer from "./FAQDrawer";
 
 // ============================================================
 // HELPERS
@@ -240,6 +241,7 @@ export default function AdminDashboard() {
   const [historyNotHeardFrom, setHistoryNotHeardFrom] = useState(false);
 
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
 
   // Toast notifications
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -3527,6 +3529,17 @@ export default function AdminDashboard() {
       {showCelebration && (
         <ContactCelebration onDone={() => setShowCelebration(false)} />
       )}
+
+      {/* Floating FAQ button */}
+      <button
+        onClick={() => setShowFAQ(true)}
+        className="fixed bottom-6 right-5 z-40 w-10 h-10 rounded-full bg-stone-700 hover:bg-stone-800 text-white shadow-lg flex items-center justify-center transition-colors"
+        aria-label="Help & FAQ"
+      >
+        <span className="text-base font-semibold leading-none">?</span>
+      </button>
+
+      {showFAQ && <FAQDrawer onClose={() => setShowFAQ(false)} />}
     </div>
   );
 }
