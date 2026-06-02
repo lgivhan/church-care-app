@@ -3393,7 +3393,7 @@ export default function AdminDashboard() {
           onSaved={() => {
             setAdHocModalOpen(false);
             loadContactLogs();
-            showToast("Contact log saved successfully.");
+            showToast("Contact log saved. View it in the History tab.");
           }}
         />
       )}
