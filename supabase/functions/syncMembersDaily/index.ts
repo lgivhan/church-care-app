@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------
     const allPeople: PCOPerson[] = [];
     let nextUrl: string | null =
-      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership`;
+      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership,gender`;
 
     let pageCount = 0;
 
@@ -134,6 +134,11 @@ Deno.serve(async (req: Request) => {
       const personId = person.id;
       const attrs = person.attributes ?? {};
 
+      // PCO returns "M" or "F"; normalize to our db values or null.
+      const genderRaw = attrs.gender ?? null;
+      const gender =
+        genderRaw === "M" ? "male" : genderRaw === "F" ? "female" : null;
+
       return {
         id: personId,
         first_name: attrs.first_name ?? "",
@@ -143,6 +148,7 @@ Deno.serve(async (req: Request) => {
         address: addressMap[personId] ?? null,
         birthday: attrs.birthdate ?? null,
         membership_type: attrs.membership ?? null,
+        gender,
         last_synced: new Date().toISOString(),
       };
     });
@@ -238,6 +244,7 @@ interface PCOPerson {
     last_name?: string;
     birthdate?: string | null;
     membership?: string | null;
+    gender?: string | null;
   };
 }
 

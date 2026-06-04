@@ -353,7 +353,7 @@ export default function AdminDashboard() {
     const { data: profileData } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at",
+        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at, gender_filter",
       )
       .in("role", ["volunteer", "admin"])
       .eq("is_active", true)
@@ -423,7 +423,7 @@ export default function AdminDashboard() {
     const { data } = await supabase
       .from("members")
       .select(
-        "id, first_name, last_name, membership_type, excluded_from_assignments",
+        "id, first_name, last_name, membership_type, excluded_from_assignments, gender",
       )
       .order("last_name", { ascending: true });
     setAllMembers(data ?? []);
@@ -726,6 +726,40 @@ export default function AdminDashboard() {
       );
     } catch {
       showToast("Failed to update member. Please try again.", "error");
+    }
+  }
+
+  async function updateGenderFilter(volunteerId, value) {
+    const prev =
+      volunteers.find((v) => v.id === volunteerId)?.gender_filter ?? null;
+    setVolunteers((prevVols) =>
+      prevVols.map((v) =>
+        v.id === volunteerId ? { ...v, gender_filter: value } : v,
+      ),
+    );
+    try {
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles?id=eq.${volunteerId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ gender_filter: value }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch {
+      setVolunteers((prevVols) =>
+        prevVols.map((v) =>
+          v.id === volunteerId ? { ...v, gender_filter: prev } : v,
+        ),
+      );
+      showToast("Failed to update contact filter. Please try again.", "error");
     }
   }
 
@@ -1308,6 +1342,18 @@ export default function AdminDashboard() {
   const activeContactsRows = contactsRows.filter((r) => !r.excluded);
   const excludedContactsRows = contactsRows.filter((r) => r.excluded);
 
+  const hasGenderFilteredVolunteers = volunteers.some((v) => v.gender_filter);
+  const membersNoGender = hasGenderFilteredVolunteers
+    ? allMembers.filter((m) => {
+        if (m.excluded_from_assignments) return false;
+        if (m.membership_type) {
+          const t = m.membership_type.toLowerCase();
+          if (t.includes("child") || t.includes("teen")) return false;
+        }
+        return !m.gender;
+      })
+    : [];
+
   // --------------------------------------------------------
   // RENDER
   // --------------------------------------------------------
@@ -1532,6 +1578,32 @@ export default function AdminDashboard() {
                     <span
                       key={m.id}
                       className="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full"
+                    >
+                      {m.first_name} {m.last_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {membersNoGender.length > 0 && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+                <p className="text-sm font-semibold text-blue-800 mb-1">
+                  ℹ️ {membersNoGender.length} member
+                  {membersNoGender.length !== 1 ? "s" : ""} have no gender set
+                  in Planning Center
+                </p>
+                <p className="text-xs text-blue-600 mb-3">
+                  Gender-filtered volunteers are active. These members will only
+                  be assigned to volunteers who contact all genders. Update
+                  their gender in Planning Center to include them in filtered
+                  pools.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {membersNoGender.map((m) => (
+                    <span
+                      key={m.id}
+                      className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full"
                     >
                       {m.first_name} {m.last_name}
                     </span>
@@ -2225,6 +2297,19 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </div>
+                          <div className="mt-2">
+                            <select
+                              value={v.gender_filter ?? ""}
+                              onChange={(e) =>
+                                updateGenderFilter(v.id, e.target.value || null)
+                              }
+                              className="px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            >
+                              <option value="">All genders</option>
+                              <option value="female">Women only</option>
+                              <option value="male">Men only</option>
+                            </select>
+                          </div>
                         </div>
                       );
                     })}
@@ -2233,10 +2318,11 @@ export default function AdminDashboard() {
                   {/* Desktop table */}
                   <SectionCard className="hidden sm:block">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[640px]">
+                      <table className="w-full text-sm min-w-[780px]">
                         <TableHeader>
                           <Th>Name</Th>
                           <Th>Ministry</Th>
+                          <Th>Contacts</Th>
                           <Th>Email</Th>
                           <Th>Assigned</Th>
                           <Th>Completed</Th>
@@ -2285,6 +2371,22 @@ export default function AdminDashboard() {
                                     ? v.ministry.charAt(0).toUpperCase() +
                                       v.ministry.slice(1)
                                     : "—"}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <select
+                                    value={v.gender_filter ?? ""}
+                                    onChange={(e) =>
+                                      updateGenderFilter(
+                                        v.id,
+                                        e.target.value || null,
+                                      )
+                                    }
+                                    className="px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                  >
+                                    <option value="">All genders</option>
+                                    <option value="female">Women only</option>
+                                    <option value="male">Men only</option>
+                                  </select>
                                 </td>
                                 <td className="px-4 py-3 text-stone-600">
                                   {v.is_non_technical ? (
