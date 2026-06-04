@@ -134,10 +134,14 @@ Deno.serve(async (req: Request) => {
       const personId = person.id;
       const attrs = person.attributes ?? {};
 
-      // PCO returns "M" or "F"; normalize to our db values or null.
+      // PCO returns "Male" or "Female"; normalize to our db values or null.
       const genderRaw = attrs.gender ?? null;
       const gender =
-        genderRaw === "M" ? "male" : genderRaw === "F" ? "female" : null;
+        genderRaw === "Male"
+          ? "male"
+          : genderRaw === "Female"
+            ? "female"
+            : null;
 
       return {
         id: personId,
