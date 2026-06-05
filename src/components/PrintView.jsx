@@ -148,6 +148,17 @@ export default function PrintView({
                     <tr key={a.id}>
                       <td>
                         {a.members?.first_name} {a.members?.last_name}
+                        {a.members?.membership_type && (
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#666",
+                              marginTop: "2px",
+                            }}
+                          >
+                            {a.members.membership_type}
+                          </div>
+                        )}
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         {formatPhone(a.members?.phone)}
