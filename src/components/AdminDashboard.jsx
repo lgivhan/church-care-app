@@ -479,6 +479,7 @@ export default function AdminDashboard() {
       .is("phone", null)
       .is("address", null)
       .eq("is_child", false)
+      .eq("excluded_from_assignments", false)
       .order("last_name", { ascending: true });
 
     setMembersNoContact(data ?? []);
