@@ -1538,11 +1538,11 @@ export default function AdminDashboard() {
                       return daysLeft !== null ? (
                         <span
                           className={`font-medium px-2 py-0.5 rounded-full ${
-                            daysLeft <= 1
+                            daysLeft <= 3
                               ? "bg-red-100 text-red-700"
-                              : daysLeft <= 3
+                              : daysLeft <= 7
                                 ? "bg-amber-100 text-amber-700"
-                                : "bg-stone-100 text-stone-500"
+                                : "bg-green-100 text-green-700"
                           }`}
                         >
                           {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
@@ -1661,11 +1661,11 @@ export default function AdminDashboard() {
                       ) : myDaysLeft !== null ? (
                         <span
                           className={`font-medium px-2 py-0.5 rounded-full ${
-                            myDaysLeft <= 1
+                            myDaysLeft <= 3
                               ? "bg-red-100 text-red-700"
-                              : myDaysLeft <= 3
+                              : myDaysLeft <= 7
                                 ? "bg-amber-100 text-amber-700"
-                                : "bg-stone-100 text-stone-500"
+                                : "bg-green-100 text-green-700"
                           }`}
                         >
                           {myDaysLeft} day{myDaysLeft !== 1 ? "s" : ""} left
