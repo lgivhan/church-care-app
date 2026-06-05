@@ -423,7 +423,7 @@ export default function AdminDashboard() {
     const { data } = await supabase
       .from("members")
       .select(
-        "id, first_name, last_name, membership_type, excluded_from_assignments, gender",
+        "id, first_name, last_name, membership_type, excluded_from_assignments, gender, is_child",
       )
       .order("last_name", { ascending: true });
     setAllMembers(data ?? []);
@@ -476,15 +476,10 @@ export default function AdminDashboard() {
       .is("email", null)
       .is("phone", null)
       .is("address", null)
+      .eq("is_child", false)
       .order("last_name", { ascending: true });
 
-    const filtered = (data ?? []).filter((m) => {
-      if (!m.membership_type) return true;
-      const t = m.membership_type.toLowerCase();
-      return !t.includes("child") && !t.includes("teen");
-    });
-
-    setMembersNoContact(filtered);
+    setMembersNoContact(data ?? []);
   }
 
   async function loadMyAssignments() {
@@ -1344,14 +1339,9 @@ export default function AdminDashboard() {
 
   const hasGenderFilteredVolunteers = volunteers.some((v) => v.gender_filter);
   const membersNoGender = hasGenderFilteredVolunteers
-    ? allMembers.filter((m) => {
-        if (m.excluded_from_assignments) return false;
-        if (m.membership_type) {
-          const t = m.membership_type.toLowerCase();
-          if (t.includes("child") || t.includes("teen")) return false;
-        }
-        return !m.gender;
-      })
+    ? allMembers.filter(
+        (m) => !m.is_child && !m.excluded_from_assignments && !m.gender,
+      )
     : [];
 
   // --------------------------------------------------------

@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------
     const allPeople: PCOPerson[] = [];
     let nextUrl: string | null =
-      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership,gender`;
+      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership,gender,child`;
 
     let pageCount = 0;
 
@@ -153,6 +153,7 @@ Deno.serve(async (req: Request) => {
         birthday: attrs.birthdate ?? null,
         membership_type: attrs.membership ?? null,
         gender,
+        is_child: attrs.child === true,
         last_synced: new Date().toISOString(),
       };
     });
@@ -180,34 +181,30 @@ Deno.serve(async (req: Request) => {
 
     // --------------------------------------------------------
     // 7. Clean up pending assignments for members who are now
-    //    classified as child or teen in Planning Center.
+    //    marked as children in Planning Center.
     //    These members are excluded from assignment generation,
     //    but may have been assigned in a prior cycle before their
-    //    membership type changed.
+    //    child flag was set.
     // --------------------------------------------------------
-    const childTeenIds = members
-      .filter((m) => {
-        if (!m.membership_type) return false;
-        const t = m.membership_type.toLowerCase();
-        return t.includes("child") || t.includes("teen");
-      })
+    const childIds = members
+      .filter((m) => m.is_child === true)
       .map((m) => m.id);
 
-    if (childTeenIds.length > 0) {
+    if (childIds.length > 0) {
       const { error: deleteError } = await supabase
         .from("assignments")
         .delete()
-        .in("member_id", childTeenIds)
+        .in("member_id", childIds)
         .eq("status", "pending");
 
       if (deleteError) {
         console.warn(
-          "Warning: failed to clean up child/teen assignments:",
+          "Warning: failed to clean up child assignments:",
           deleteError.message,
         );
       } else {
         console.log(
-          `Cleaned up pending assignments for ${childTeenIds.length} child/teen members`,
+          `Cleaned up pending assignments for ${childIds.length} child members`,
         );
       }
     }
@@ -249,6 +246,7 @@ interface PCOPerson {
     birthdate?: string | null;
     membership?: string | null;
     gender?: string | null;
+    child?: boolean | null;
   };
 }
 
