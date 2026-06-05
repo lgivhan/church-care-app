@@ -16,6 +16,10 @@ const SECTIONS = [
         a: "Every other Friday at 4am, the app automatically distributes members across active volunteers using a round-robin system. Each volunteer gets a 2-week cycle to complete their contacts.",
       },
       {
+        q: "How do I find out which volunteer is assigned to a specific member?",
+        a: 'Go to the Assignments tab and type the member\'s name in the "Filter by member..." search box. The list will narrow to show their assignment and which volunteer is responsible.',
+      },
+      {
         q: "How do I log a contact on behalf of a volunteer?",
         a: "Go to the Assignments tab, find the assignment, and click the edit log button. You can select any volunteer and fill in the contact details on their behalf.",
       },

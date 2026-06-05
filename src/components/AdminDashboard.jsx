@@ -210,6 +210,7 @@ export default function AdminDashboard() {
   const [volunteerSearch, setVolunteerSearch] = useState("");
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [showVolunteerDropdown, setShowVolunteerDropdown] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
   const [printNotice, setPrintNotice] = useState("");
   const [adHocModalOpen, setAdHocModalOpen] = useState(false);
   const [proxyModalOpen, setProxyModalOpen] = useState(false);
@@ -285,6 +286,7 @@ export default function AdminDashboard() {
     loadAll();
     setVolunteerSearch("");
     setSelectedVolunteer(null);
+    setMemberSearch("");
   }, [selectedWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --------------------------------------------------------
@@ -1185,9 +1187,16 @@ export default function AdminDashboard() {
     (a) => a.status === "completed",
   );
 
-  const filteredAssignments = selectedVolunteer
-    ? assignments.filter((a) => a.caller_id === selectedVolunteer.id)
-    : assignments;
+  const filteredAssignments = assignments.filter((a) => {
+    if (selectedVolunteer && a.caller_id !== selectedVolunteer.id) return false;
+    if (memberSearch.trim()) {
+      const q = memberSearch.trim().toLowerCase();
+      const name =
+        `${a.members?.first_name ?? ""} ${a.members?.last_name ?? ""}`.toLowerCase();
+      if (!name.includes(q)) return false;
+    }
+    return true;
+  });
 
   let notHeardFromMemberIds = null;
   if (historyNotHeardFrom) {
@@ -1848,40 +1857,52 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="relative mb-4">
-              <input
-                type="text"
-                value={volunteerSearch}
-                onChange={(e) => {
-                  setVolunteerSearch(e.target.value);
-                  setSelectedVolunteer(null);
-                  setShowVolunteerDropdown(true);
-                }}
-                onFocus={() => setShowVolunteerDropdown(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowVolunteerDropdown(false), 150)
-                }
-                placeholder="Volunteer name..."
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
-              />
-              {showVolunteerDropdown && filteredVolunteerOptions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                  {filteredVolunteerOptions.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onMouseDown={() => {
-                        setSelectedVolunteer(v);
-                        setVolunteerSearch(v.full_name);
-                        setShowVolunteerDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 transition-colors font-medium text-stone-800"
-                    >
-                      {v.full_name}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="flex gap-3 mb-4">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={volunteerSearch}
+                  onChange={(e) => {
+                    setVolunteerSearch(e.target.value);
+                    setSelectedVolunteer(null);
+                    setShowVolunteerDropdown(true);
+                  }}
+                  onFocus={() => setShowVolunteerDropdown(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowVolunteerDropdown(false), 150)
+                  }
+                  placeholder="Filter by volunteer..."
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+                {showVolunteerDropdown &&
+                  filteredVolunteerOptions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                      {filteredVolunteerOptions.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setSelectedVolunteer(v);
+                            setVolunteerSearch(v.full_name);
+                            setShowVolunteerDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 transition-colors font-medium text-stone-800"
+                        >
+                          {v.full_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Filter by member..."
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+              </div>
             </div>
 
             {filteredAssignments.length === 0 ? (
