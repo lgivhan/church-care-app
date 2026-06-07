@@ -209,10 +209,57 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // --------------------------------------------------------
+    // 8. Exclude members no longer active in Planning Center.
+    //    We soft-delete by setting excluded_from_assignments = true
+    //    so contact history is preserved but they won't be assigned
+    //    to volunteers or appear in admin alerts.
+    // --------------------------------------------------------
+    let excludedCount = 0;
+    const { data: dbMembers, error: fetchMembersError } = await supabase
+      .from("members")
+      .select("id");
+
+    if (fetchMembersError) {
+      console.warn(
+        "Warning: could not fetch member IDs for stale-member cleanup:",
+        fetchMembersError.message,
+      );
+    } else {
+      const pcoIdSet = new Set(allPeople.map((p) => p.id));
+      const staleIds = (dbMembers ?? [])
+        .map((m) => m.id)
+        .filter((id) => !pcoIdSet.has(id));
+
+      for (let i = 0; i < staleIds.length; i += BATCH_SIZE) {
+        const batch = staleIds.slice(i, i + BATCH_SIZE);
+        const { error: excludeError } = await supabase
+          .from("members")
+          .update({ excluded_from_assignments: true })
+          .in("id", batch);
+
+        if (excludeError) {
+          console.warn(
+            "Warning: failed to exclude stale members:",
+            excludeError.message,
+          );
+        } else {
+          excludedCount += batch.length;
+        }
+      }
+
+      if (staleIds.length > 0) {
+        console.log(
+          `Excluded ${staleIds.length} members no longer active in Planning Center`,
+        );
+      }
+    }
+
     const summary = {
       success: true,
       total_fetched: allPeople.length,
       total_upserted: upsertedCount,
+      total_excluded_stale: excludedCount,
       pages_fetched: pageCount,
       synced_at: new Date().toISOString(),
     };
