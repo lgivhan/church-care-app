@@ -346,7 +346,7 @@ export default function AdminDashboard() {
         caller_id,
         member_id,
         profiles!assignments_caller_id_fkey (full_name, email, ministry, is_non_technical),
-        members (first_name, last_name, email, phone, address, birthday, membership_type)
+        members (first_name, last_name, email, phone, address, birthday, membership_type, paper_only)
       `,
       )
       .eq("week_starting", selectedWeek)
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
     const { data } = await supabase
       .from("members")
       .select(
-        "id, first_name, last_name, membership_type, excluded_from_assignments, gender, is_child",
+        "id, first_name, last_name, membership_type, excluded_from_assignments, paper_only, gender, is_child",
       )
       .order("last_name", { ascending: true });
     setAllMembers(data ?? []);
@@ -738,6 +738,32 @@ export default function AdminDashboard() {
       );
     } catch {
       showToast("Failed to update member. Please try again.", "error");
+    }
+  }
+
+  async function toggleMemberPaperOnly(memberId, currentlyPaperOnly) {
+    setAllMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId ? { ...m, paper_only: !currentlyPaperOnly } : m,
+      ),
+    );
+    const { error } = await supabase
+      .from("members")
+      .update({ paper_only: !currentlyPaperOnly })
+      .eq("id", memberId);
+    if (error) {
+      setAllMembers((prev) =>
+        prev.map((m) =>
+          m.id === memberId ? { ...m, paper_only: currentlyPaperOnly } : m,
+        ),
+      );
+      showToast("Failed to update member. Please try again.", "error");
+    } else {
+      showToast(
+        currentlyPaperOnly
+          ? "Paper-only flag removed."
+          : "Member marked as paper only.",
+      );
     }
   }
 
@@ -1388,6 +1414,7 @@ export default function AdminDashboard() {
       lastContacted: lastContactedMap[m.id] ?? null,
       lastHeardFrom: lastHeardFromMap[m.id] ?? null,
       excluded: m.excluded_from_assignments ?? false,
+      paperOnly: m.paper_only ?? false,
     }))
     .sort((a, b) => {
       const { col, dir } = contactsSort;
@@ -2738,7 +2765,19 @@ export default function AdminDashboard() {
                           )}
                         </p>
                       </div>
-                      <div className="mt-3 flex justify-end">
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            toggleMemberPaperOnly(row.id, row.paperOnly)
+                          }
+                          className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
+                            row.paperOnly
+                              ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              : "bg-stone-100 text-stone-600 hover:bg-blue-50 hover:text-blue-700"
+                          }`}
+                        >
+                          {row.paperOnly ? "✓ Paper Only" : "Paper Only"}
+                        </button>
                         <button
                           onClick={() =>
                             toggleMemberExclusion(row.id, row.excluded)
@@ -2781,7 +2820,7 @@ export default function AdminDashboard() {
                           </th>
                         ))}
                         <th className="text-left px-4 py-3 text-stone-500 font-medium text-xs uppercase tracking-wide">
-                          Assignments
+                          Actions
                         </th>
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
@@ -2835,14 +2874,30 @@ export default function AdminDashboard() {
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <button
-                                onClick={() =>
-                                  toggleMemberExclusion(row.id, row.excluded)
-                                }
-                                className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
-                              >
-                                Exclude
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    toggleMemberPaperOnly(row.id, row.paperOnly)
+                                  }
+                                  className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
+                                    row.paperOnly
+                                      ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                      : "bg-stone-100 text-stone-600 hover:bg-blue-50 hover:text-blue-700"
+                                  }`}
+                                >
+                                  {row.paperOnly
+                                    ? "✓ Paper Only"
+                                    : "Paper Only"}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    toggleMemberExclusion(row.id, row.excluded)
+                                  }
+                                  className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-stone-100 text-stone-600 hover:bg-red-50 hover:text-red-700"
+                                >
+                                  Exclude
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
