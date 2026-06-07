@@ -88,11 +88,6 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
                 {membershipLabel.label}
               </span>
             )}
-            {member?.paper_only && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                📬 Paper Only
-              </span>
-            )}
             {birthday && <p className="text-xs text-blue-500">🎂 {birthday}</p>}
           </div>
         </div>

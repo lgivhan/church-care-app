@@ -122,8 +122,7 @@ export default function VolunteerDashboard() {
             phone,
             address,
             birthday,
-            membership_type,
-            paper_only
+            membership_type
           )
         `,
         )
