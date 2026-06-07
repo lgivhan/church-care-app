@@ -767,6 +767,39 @@ export default function AdminDashboard() {
     }
   }
 
+  async function toggleVolunteerNonTechnical(
+    volunteerId,
+    currentlyNonTechnical,
+  ) {
+    setVolunteers((prev) =>
+      prev.map((v) =>
+        v.id === volunteerId
+          ? { ...v, is_non_technical: !currentlyNonTechnical }
+          : v,
+      ),
+    );
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_non_technical: !currentlyNonTechnical })
+      .eq("id", volunteerId);
+    if (error) {
+      setVolunteers((prev) =>
+        prev.map((v) =>
+          v.id === volunteerId
+            ? { ...v, is_non_technical: currentlyNonTechnical }
+            : v,
+        ),
+      );
+      showToast("Failed to update volunteer. Please try again.", "error");
+    } else {
+      showToast(
+        currentlyNonTechnical
+          ? "Volunteer set to digital."
+          : "Volunteer set to paper only.",
+      );
+    }
+  }
+
   async function updateGenderFilter(volunteerId, value) {
     const prev =
       volunteers.find((v) => v.id === volunteerId)?.gender_filter ?? null;
@@ -2375,6 +2408,23 @@ export default function AdminDashboard() {
                                     : "Send Invite"}
                                 </button>
                               )}
+                              <button
+                                onClick={() =>
+                                  toggleVolunteerNonTechnical(
+                                    v.id,
+                                    v.is_non_technical,
+                                  )
+                                }
+                                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                                  v.is_non_technical
+                                    ? "bg-stone-200 text-stone-700 hover:bg-stone-300"
+                                    : "bg-stone-100 text-stone-500 hover:bg-stone-200"
+                                }`}
+                              >
+                                {v.is_non_technical
+                                  ? "📄 Paper only"
+                                  : "Set paper only"}
+                              </button>
                               {v.role !== "admin" && (
                                 <button
                                   onClick={() =>
@@ -2521,6 +2571,23 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex flex-col gap-1">
+                                    <button
+                                      onClick={() =>
+                                        toggleVolunteerNonTechnical(
+                                          v.id,
+                                          v.is_non_technical,
+                                        )
+                                      }
+                                      className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors ${
+                                        v.is_non_technical
+                                          ? "bg-stone-200 text-stone-700 hover:bg-stone-300"
+                                          : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                                      }`}
+                                    >
+                                      {v.is_non_technical
+                                        ? "📄 Paper only"
+                                        : "Set paper only"}
+                                    </button>
                                     {v.invite_pending && v.role !== "admin" && (
                                       <button
                                         onClick={() =>
