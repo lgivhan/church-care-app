@@ -1,13 +1,5 @@
 import ReactDOM from "react-dom";
-
-function formatPhone(phone) {
-  if (!phone) return "—";
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return phone;
-}
+import { formatPhone } from "../lib/utils.js";
 
 export default function PrintView({
   volunteers,

@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { getMembershipLabel } from "../lib/utils.js";
+import {
+  getMembershipLabel,
+  normalizePhone,
+  formatPhone,
+} from "../lib/utils.js";
 
 export default function MemberCard({ assignment, onComplete, onEdit }) {
   const member = assignment.members;
@@ -113,7 +117,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
       {/* Contact Details */}
       <div className="flex flex-col gap-1.5">
         {member?.phone && (
-          <p className="text-sm text-stone-600">{member.phone}</p>
+          <p className="text-sm text-stone-600">{formatPhone(member.phone)}</p>
         )}
         {member?.email && (
           <p className="text-sm text-stone-600 break-all">{member.email}</p>
@@ -134,13 +138,13 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
           {member?.phone && (
             <>
               <a
-                href={`tel:${member.phone}`}
+                href={`tel:${normalizePhone(member.phone) ?? member.phone}`}
                 className="text-center text-sm font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-lg transition-colors"
               >
                 📞 Call
               </a>
               <a
-                href={`sms:${member.phone}`}
+                href={`sms:${normalizePhone(member.phone) ?? member.phone}`}
                 className="text-center text-sm font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-lg transition-colors"
               >
                 💬 Text

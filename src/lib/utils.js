@@ -4,6 +4,23 @@
 // start are the same day.
 // ============================================================
 
+// Strips formatting, removes leading US country code "1" from 11-digit numbers,
+// and returns a clean 10-digit string. Returns null if not a valid US number.
+export function normalizePhone(phone) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+  if (digits.length === 10) return digits;
+  return null;
+}
+
+// Returns a formatted (XXX) XXX-XXXX string, or the raw value if not normalizable.
+export function formatPhone(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits) return phone || "—";
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export function getThisFriday() {
   const today = new Date();
   const friday = new Date(today);
