@@ -218,6 +218,9 @@ export default function AdminDashboard() {
   const [proxyVolunteer, setProxyVolunteer] = useState(null);
   const [proxyExistingLog, setProxyExistingLog] = useState(null);
   const [adminUserId, setAdminUserId] = useState(null);
+  const [myFullName, setMyFullName] = useState(null);
+  const [resolvingPrayerIds, setResolvingPrayerIds] = useState(new Set());
+  const [resolvingFollowUpIds, setResolvingFollowUpIds] = useState(new Set());
   const [printVolunteers, setPrintVolunteers] = useState([]);
   const [printAssignmentsByVolunteer, setPrintAssignmentsByVolunteer] =
     useState({});
@@ -441,8 +444,10 @@ export default function AdminDashboard() {
         contacted_at,
         contact_method,
         follow_up_resolved,
+        follow_up_resolved_at,
         members (first_name, last_name),
-        profiles!contact_logs_volunteer_id_fkey (full_name)
+        profiles!contact_logs_volunteer_id_fkey (full_name),
+        follow_up_resolved_by_profile:profiles!contact_logs_follow_up_resolved_by_fkey (full_name)
       `,
       )
       .eq("needs_follow_up", true)
@@ -460,8 +465,10 @@ export default function AdminDashboard() {
         contacted_at,
         contact_method,
         prayer_request_resolved,
+        prayer_resolved_at,
         members (first_name, last_name),
-        profiles!contact_logs_volunteer_id_fkey (full_name)
+        profiles!contact_logs_volunteer_id_fkey (full_name),
+        prayer_resolved_by_profile:profiles!contact_logs_prayer_resolved_by_fkey (full_name)
       `,
       )
       .eq("prayer_request", true)
@@ -494,6 +501,13 @@ export default function AdminDashboard() {
     const user = data.user;
     setMyUserId(user.id);
     setAdminUserId(user.id);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    setMyFullName(profile?.full_name ?? null);
 
     // Build a 14-day window ending today to find the active cycle.
     const today = new Date();
@@ -998,48 +1012,100 @@ export default function AdminDashboard() {
   }
 
   async function resolvePrayerRequest(id) {
+    if (resolvingPrayerIds.has(id)) return;
+    setResolvingPrayerIds((prev) => new Set(prev).add(id));
+    const resolvedAt = new Date().toISOString();
+    setPrayerRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              prayer_request_resolved: true,
+              prayer_resolved_at: resolvedAt,
+              prayer_resolved_by_profile: { full_name: myFullName },
+            }
+          : r,
+      ),
+    );
     try {
-      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${token}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({ prayer_request_resolved: true }),
-        },
-      );
-      if (!res.ok) throw new Error(await res.text());
-      loadPrayerRequests();
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({
+          prayer_request_resolved: true,
+          prayer_resolved_at: resolvedAt,
+          prayer_resolved_by: myUserId,
+        })
+        .eq("id", id);
+      if (error) throw error;
     } catch {
+      setPrayerRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                prayer_request_resolved: false,
+                prayer_resolved_at: null,
+                prayer_resolved_by_profile: null,
+              }
+            : r,
+        ),
+      );
       showToast("Failed to update prayer request. Please try again.", "error");
+    } finally {
+      setResolvingPrayerIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
   async function resolveFollowUp(id) {
+    if (resolvingFollowUpIds.has(id)) return;
+    setResolvingFollowUpIds((prev) => new Set(prev).add(id));
+    const resolvedAt = new Date().toISOString();
+    setFollowUps((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? {
+              ...f,
+              follow_up_resolved: true,
+              follow_up_resolved_at: resolvedAt,
+              follow_up_resolved_by_profile: { full_name: myFullName },
+            }
+          : f,
+      ),
+    );
     try {
-      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${token}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({ follow_up_resolved: true }),
-        },
-      );
-      if (!res.ok) throw new Error(await res.text());
-      loadFollowUps();
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({
+          follow_up_resolved: true,
+          follow_up_resolved_at: resolvedAt,
+          follow_up_resolved_by: myUserId,
+        })
+        .eq("id", id);
+      if (error) throw error;
     } catch {
+      setFollowUps((prev) =>
+        prev.map((f) =>
+          f.id === id
+            ? {
+                ...f,
+                follow_up_resolved: false,
+                follow_up_resolved_at: null,
+                follow_up_resolved_by_profile: null,
+              }
+            : f,
+        ),
+      );
       showToast("Failed to update follow-up. Please try again.", "error");
+    } finally {
+      setResolvingFollowUpIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -3271,15 +3337,40 @@ export default function AdminDashboard() {
                           </p>
                         </div>
                         {log.follow_up_resolved ? (
-                          <span className="shrink-0 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
-                            ✓ Followed up
-                          </span>
+                          <div className="shrink-0 text-right">
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                              ✓ Followed up
+                            </span>
+                            {(log.follow_up_resolved_by_profile?.full_name ||
+                              log.follow_up_resolved_at) && (
+                              <p className="text-xs text-stone-400 mt-1">
+                                {log.follow_up_resolved_by_profile
+                                  ?.full_name && (
+                                  <span>
+                                    by{" "}
+                                    {
+                                      log.follow_up_resolved_by_profile
+                                        .full_name
+                                    }
+                                  </span>
+                                )}
+                                {log.follow_up_resolved_by_profile?.full_name &&
+                                  log.follow_up_resolved_at &&
+                                  " · "}
+                                {log.follow_up_resolved_at &&
+                                  formatDateTime(log.follow_up_resolved_at)}
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <button
                             onClick={() => resolveFollowUp(log.id)}
-                            className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
+                            disabled={resolvingFollowUpIds.has(log.id)}
+                            className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors"
                           >
-                            Mark done
+                            {resolvingFollowUpIds.has(log.id)
+                              ? "Saving..."
+                              : "Mark done"}
                           </button>
                         )}
                       </div>
@@ -3335,15 +3426,37 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-4 py-3">
                               {log.follow_up_resolved ? (
-                                <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
-                                  ✓ Followed up
-                                </span>
+                                <div>
+                                  <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                                    ✓ Followed up
+                                  </span>
+                                  {(log.follow_up_resolved_by_profile
+                                    ?.full_name ||
+                                    log.follow_up_resolved_at) && (
+                                    <p className="text-xs text-stone-400 mt-1">
+                                      {log.follow_up_resolved_by_profile
+                                        ?.full_name &&
+                                        `by ${log.follow_up_resolved_by_profile.full_name}`}
+                                      {log.follow_up_resolved_by_profile
+                                        ?.full_name &&
+                                        log.follow_up_resolved_at &&
+                                        " · "}
+                                      {log.follow_up_resolved_at &&
+                                        formatDateTime(
+                                          log.follow_up_resolved_at,
+                                        )}
+                                    </p>
+                                  )}
+                                </div>
                               ) : (
                                 <button
                                   onClick={() => resolveFollowUp(log.id)}
-                                  className="text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
+                                  disabled={resolvingFollowUpIds.has(log.id)}
+                                  className="text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors"
                                 >
-                                  Mark as followed up
+                                  {resolvingFollowUpIds.has(log.id)
+                                    ? "Saving..."
+                                    : "Mark as followed up"}
                                 </button>
                               )}
                             </td>
@@ -3395,15 +3508,32 @@ export default function AdminDashboard() {
                           </p>
                         </div>
                         {log.prayer_request_resolved ? (
-                          <span className="shrink-0 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
-                            ✓ Prayed for
-                          </span>
+                          <div className="shrink-0 text-right">
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                              ✓ Prayed for
+                            </span>
+                            {(log.prayer_resolved_by_profile?.full_name ||
+                              log.prayer_resolved_at) && (
+                              <p className="text-xs text-stone-400 mt-1">
+                                {log.prayer_resolved_by_profile?.full_name &&
+                                  `by ${log.prayer_resolved_by_profile.full_name}`}
+                                {log.prayer_resolved_by_profile?.full_name &&
+                                  log.prayer_resolved_at &&
+                                  " · "}
+                                {log.prayer_resolved_at &&
+                                  formatDateTime(log.prayer_resolved_at)}
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <button
                             onClick={() => resolvePrayerRequest(log.id)}
-                            className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
+                            disabled={resolvingPrayerIds.has(log.id)}
+                            className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors"
                           >
-                            Mark prayed
+                            {resolvingPrayerIds.has(log.id)
+                              ? "Saving..."
+                              : "Mark prayed"}
                           </button>
                         )}
                       </div>
@@ -3459,15 +3589,34 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-4 py-3">
                               {log.prayer_request_resolved ? (
-                                <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
-                                  ✓ Prayed for
-                                </span>
+                                <div>
+                                  <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                                    ✓ Prayed for
+                                  </span>
+                                  {(log.prayer_resolved_by_profile?.full_name ||
+                                    log.prayer_resolved_at) && (
+                                    <p className="text-xs text-stone-400 mt-1">
+                                      {log.prayer_resolved_by_profile
+                                        ?.full_name &&
+                                        `by ${log.prayer_resolved_by_profile.full_name}`}
+                                      {log.prayer_resolved_by_profile
+                                        ?.full_name &&
+                                        log.prayer_resolved_at &&
+                                        " · "}
+                                      {log.prayer_resolved_at &&
+                                        formatDateTime(log.prayer_resolved_at)}
+                                    </p>
+                                  )}
+                                </div>
                               ) : (
                                 <button
                                   onClick={() => resolvePrayerRequest(log.id)}
-                                  className="text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
+                                  disabled={resolvingPrayerIds.has(log.id)}
+                                  className="text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors"
                                 >
-                                  Mark as prayed for
+                                  {resolvingPrayerIds.has(log.id)
+                                    ? "Saving..."
+                                    : "Mark as prayed for"}
                                 </button>
                               )}
                             </td>

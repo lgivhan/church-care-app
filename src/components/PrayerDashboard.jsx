@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useEffect, useState, useCallback } from "react";
-import { supabase, getAccessToken } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 
 function HeartIcon({ className }) {
   return (
@@ -33,6 +33,9 @@ export default function PrayerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showResolved, setShowResolved] = useState(false);
+  const [resolvingIds, setResolvingIds] = useState(new Set());
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState(null);
 
   const loadPrayerRequests = useCallback(async () => {
     setLoading(true);
@@ -46,8 +49,10 @@ export default function PrayerDashboard() {
           notes,
           contacted_at,
           prayer_request_resolved,
+          prayer_resolved_at,
           members (first_name, last_name),
-          profiles!contact_logs_volunteer_id_fkey (full_name)
+          profiles!contact_logs_volunteer_id_fkey (full_name),
+          prayer_resolved_by_profile:profiles!contact_logs_prayer_resolved_by_fkey (full_name)
         `,
         )
         .eq("prayer_request", true)
@@ -59,18 +64,26 @@ export default function PrayerDashboard() {
       setError("Failed to load prayer requests. Please refresh.");
       console.error(err);
     } finally {
-      // Always release the loading gate — even if the Supabase client
-      // throws (e.g. network drop after tab restore) rather than returning
-      // a structured { error } object.
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadPrayerRequests();
+
+    supabase.auth.getUser().then(async ({ data }) => {
+      const user = data?.user;
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+      setCurrentUserName(profile?.full_name ?? null);
+    });
   }, [loadPrayerRequests]);
 
-  // Refresh data when returning to the app
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
@@ -83,25 +96,57 @@ export default function PrayerDashboard() {
   }, [loadPrayerRequests]);
 
   async function handleResolve(id) {
+    if (resolvingIds.has(id)) return;
+    setResolvingIds((prev) => new Set(prev).add(id));
+
+    const resolvedAt = new Date().toISOString();
+
+    // Optimistic update
+    setPrayerRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              prayer_request_resolved: true,
+              prayer_resolved_at: resolvedAt,
+              prayer_resolved_by_profile: { full_name: currentUserName },
+            }
+          : r,
+      ),
+    );
+
     try {
-      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs?id=eq.${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${token}`,
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({ prayer_request_resolved: true }),
-        },
-      );
-      if (!res.ok) throw new Error(await res.text());
-      loadPrayerRequests();
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({
+          prayer_request_resolved: true,
+          prayer_resolved_at: resolvedAt,
+          prayer_resolved_by: currentUserId,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
     } catch {
-      alert("Failed to update prayer request. Please try again.");
+      // Revert optimistic update on failure
+      setPrayerRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                prayer_request_resolved: false,
+                prayer_resolved_at: null,
+                prayer_resolved_by_profile: null,
+              }
+            : r,
+        ),
+      );
+      setError("Failed to update prayer request. Please try again.");
+    } finally {
+      setResolvingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -186,46 +231,67 @@ export default function PrayerDashboard() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {displayed.map((log) => (
-              <div
-                key={log.id}
-                className={`bg-white rounded-2xl border p-5 shadow-sm ${
-                  log.prayer_request_resolved
-                    ? "border-green-200 opacity-60"
-                    : "border-stone-100"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-semibold text-stone-800">
-                      {log.members?.first_name} {log.members?.last_name}
-                    </h3>
-                    <p className="text-xs text-stone-400 mt-0.5">
-                      Contacted by {log.profiles?.full_name} ·{" "}
-                      {formatDateTime(log.contacted_at)}
-                    </p>
+            {displayed.map((log) => {
+              const isResolving = resolvingIds.has(log.id);
+              return (
+                <div
+                  key={log.id}
+                  className={`bg-white rounded-2xl border p-5 shadow-sm ${
+                    log.prayer_request_resolved
+                      ? "border-green-200 opacity-60"
+                      : "border-stone-100"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="font-semibold text-stone-800">
+                        {log.members?.first_name} {log.members?.last_name}
+                      </h3>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        Contacted by {log.profiles?.full_name} ·{" "}
+                        {formatDateTime(log.contacted_at)}
+                      </p>
+                    </div>
+                    {log.prayer_request_resolved ? (
+                      <div className="shrink-0 text-right">
+                        <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                          ✓ Prayed for
+                        </span>
+                        {(log.prayer_resolved_by_profile?.full_name ||
+                          log.prayer_resolved_at) && (
+                          <p className="text-xs text-stone-400 mt-1">
+                            {log.prayer_resolved_by_profile?.full_name && (
+                              <span>
+                                by {log.prayer_resolved_by_profile.full_name}
+                              </span>
+                            )}
+                            {log.prayer_resolved_by_profile?.full_name &&
+                              log.prayer_resolved_at &&
+                              " · "}
+                            {log.prayer_resolved_at &&
+                              formatDateTime(log.prayer_resolved_at)}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleResolve(log.id)}
+                        disabled={isResolving}
+                        className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors"
+                      >
+                        {isResolving ? "Saving..." : "Mark as prayed for"}
+                      </button>
+                    )}
                   </div>
-                  {log.prayer_request_resolved ? (
-                    <span className="shrink-0 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
-                      ✓ Prayed for
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleResolve(log.id)}
-                      className="shrink-0 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-full transition-colors"
-                    >
-                      Mark as prayed for
-                    </button>
+
+                  {log.notes && (
+                    <p className="text-sm text-stone-600 leading-relaxed bg-stone-50 rounded-lg p-3">
+                      {log.notes}
+                    </p>
                   )}
                 </div>
-
-                {log.notes && (
-                  <p className="text-sm text-stone-600 leading-relaxed bg-stone-50 rounded-lg p-3">
-                    {log.notes}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
