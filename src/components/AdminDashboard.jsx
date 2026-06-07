@@ -3436,7 +3436,7 @@ export default function AdminDashboard() {
                                     <p className="text-xs text-stone-400 mt-1">
                                       {log.follow_up_resolved_by_profile
                                         ?.full_name &&
-                                        `by ${log.follow_up_resolved_by_profile.full_name}`}
+                                        `marked by ${log.follow_up_resolved_by_profile.full_name}`}
                                       {log.follow_up_resolved_by_profile
                                         ?.full_name &&
                                         log.follow_up_resolved_at &&
@@ -3516,7 +3516,7 @@ export default function AdminDashboard() {
                               log.prayer_resolved_at) && (
                               <p className="text-xs text-stone-400 mt-1">
                                 {log.prayer_resolved_by_profile?.full_name &&
-                                  `by ${log.prayer_resolved_by_profile.full_name}`}
+                                  `marked by ${log.prayer_resolved_by_profile.full_name}`}
                                 {log.prayer_resolved_by_profile?.full_name &&
                                   log.prayer_resolved_at &&
                                   " · "}
@@ -3598,7 +3598,7 @@ export default function AdminDashboard() {
                                     <p className="text-xs text-stone-400 mt-1">
                                       {log.prayer_resolved_by_profile
                                         ?.full_name &&
-                                        `by ${log.prayer_resolved_by_profile.full_name}`}
+                                        `marked by ${log.prayer_resolved_by_profile.full_name}`}
                                       {log.prayer_resolved_by_profile
                                         ?.full_name &&
                                         log.prayer_resolved_at &&

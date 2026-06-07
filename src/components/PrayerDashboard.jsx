@@ -262,7 +262,8 @@ export default function PrayerDashboard() {
                           <p className="text-xs text-stone-400 mt-1">
                             {log.prayer_resolved_by_profile?.full_name && (
                               <span>
-                                by {log.prayer_resolved_by_profile.full_name}
+                                marked by{" "}
+                                {log.prayer_resolved_by_profile.full_name}
                               </span>
                             )}
                             {log.prayer_resolved_by_profile?.full_name &&
