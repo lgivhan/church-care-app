@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------
     const allPeople: PCOPerson[] = [];
     let nextUrl: string | null =
-      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership,gender,child`;
+      `${PCO_BASE_URL}/people?per_page=${PAGE_SIZE}&where[status]=active&fields[Person]=first_name,last_name,birthdate,membership,gender,child,avatar`;
 
     let pageCount = 0;
 
@@ -154,6 +154,7 @@ Deno.serve(async (req: Request) => {
         membership_type: attrs.membership ?? null,
         gender,
         is_child: attrs.child === true,
+        avatar_url: attrs.avatar ?? null,
         last_synced: new Date().toISOString(),
       };
     });
@@ -294,6 +295,7 @@ interface PCOPerson {
     membership?: string | null;
     gender?: string | null;
     child?: boolean | null;
+    avatar?: string | null;
   };
 }
 

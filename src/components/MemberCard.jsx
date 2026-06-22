@@ -76,19 +76,37 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
     >
       {/* Member name + completion badge */}
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-semibold text-stone-800 text-base">
-            {member?.first_name} {member?.last_name}
-          </h3>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {membershipLabel && (
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${membershipLabel.color}`}
-              >
-                {membershipLabel.label}
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="shrink-0 w-11 h-11 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center">
+            {member?.avatar_url ? (
+              <img
+                src={member.avatar_url}
+                alt={`${member.first_name} ${member.last_name}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-sm font-semibold text-stone-500 select-none">
+                {(member?.first_name?.[0] ?? "").toUpperCase()}
+                {(member?.last_name?.[0] ?? "").toUpperCase()}
               </span>
             )}
-            {birthday && <p className="text-xs text-blue-500">🎂 {birthday}</p>}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-stone-800 text-base">
+              {member?.first_name} {member?.last_name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {membershipLabel && (
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${membershipLabel.color}`}
+                >
+                  {membershipLabel.label}
+                </span>
+              )}
+              {birthday && (
+                <p className="text-xs text-blue-500">🎂 {birthday}</p>
+              )}
+            </div>
           </div>
         </div>
         {isCompleted && (

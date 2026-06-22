@@ -346,7 +346,7 @@ export default function AdminDashboard() {
         caller_id,
         member_id,
         profiles!assignments_caller_id_fkey (full_name, email, ministry, is_non_technical),
-        members (first_name, last_name, email, phone, address, birthday, membership_type)
+        members (first_name, last_name, email, phone, address, birthday, membership_type, avatar_url)
       `,
       )
       .eq("week_starting", selectedWeek)
