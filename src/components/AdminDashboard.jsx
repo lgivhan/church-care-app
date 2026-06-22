@@ -533,8 +533,10 @@ export default function AdminDashboard() {
         last_name,
         email,
         phone,
+        address,
         birthday,
-        membership_type
+        membership_type,
+        avatar_url
       )
     `,
       )
