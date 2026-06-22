@@ -1453,6 +1453,10 @@ export default function AdminDashboard() {
       )
     : [];
 
+  const membersNoMembership = allMembers.filter(
+    (m) => !m.is_child && !m.excluded_from_assignments && !m.membership_type,
+  );
+
   // --------------------------------------------------------
   // RENDER
   // --------------------------------------------------------
@@ -1703,6 +1707,30 @@ export default function AdminDashboard() {
                     <span
                       key={m.id}
                       className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full"
+                    >
+                      {m.first_name} {m.last_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {membersNoMembership.length > 0 && (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl">
+                <p className="text-sm font-semibold text-purple-800 mb-1">
+                  ℹ️ {membersNoMembership.length} member
+                  {membersNoMembership.length !== 1 ? "s" : ""} have no
+                  membership type set in Planning Center
+                </p>
+                <p className="text-xs text-purple-600 mb-3">
+                  Update their membership type in Planning Center so they can be
+                  properly categorized.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {membersNoMembership.map((m) => (
+                    <span
+                      key={m.id}
+                      className="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full"
                     >
                       {m.first_name} {m.last_name}
                     </span>
