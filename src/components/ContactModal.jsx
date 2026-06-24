@@ -21,7 +21,7 @@
 // ============================================================
 
 import { useState } from "react";
-import { supabase, getAccessToken } from "../lib/supabaseClient";
+import { supabase, getTokenSafe } from "../lib/supabaseClient";
 
 function getContactMethodOptions(member) {
   const options = [];
@@ -118,6 +118,7 @@ export default function ContactModal({
     }, 30000);
 
     try {
+      const token = await getTokenSafe();
       const logPayload = {
         notes,
         needs_follow_up: needsFollowUp,
@@ -134,7 +135,7 @@ export default function ContactModal({
             headers: {
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Authorization: `Bearer ${token}`,
               Prefer: "return=minimal",
             },
             body: JSON.stringify(logPayload),
@@ -164,7 +165,7 @@ export default function ContactModal({
             headers: {
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Authorization: `Bearer ${token}`,
               Prefer: "return=representation",
             },
             body: JSON.stringify({
@@ -192,7 +193,7 @@ export default function ContactModal({
             headers: {
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Authorization: `Bearer ${token}`,
               Prefer: "return=minimal",
             },
             body: JSON.stringify({
