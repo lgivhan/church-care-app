@@ -1050,18 +1050,6 @@ export default function AdminDashboard() {
     if (resolvingPrayerIds.has(id)) return;
     setResolvingPrayerIds((prev) => new Set(prev).add(id));
     const resolvedAt = new Date().toISOString();
-    setPrayerRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              prayer_request_resolved: true,
-              prayer_resolved_at: resolvedAt,
-              prayer_resolved_by_profile: { full_name: myFullName },
-            }
-          : r,
-      ),
-    );
     try {
       const { error } = await supabase
         .from("contact_logs")
@@ -1072,19 +1060,19 @@ export default function AdminDashboard() {
         })
         .eq("id", id);
       if (error) throw error;
-    } catch {
       setPrayerRequests((prev) =>
         prev.map((r) =>
           r.id === id
             ? {
                 ...r,
-                prayer_request_resolved: false,
-                prayer_resolved_at: null,
-                prayer_resolved_by_profile: null,
+                prayer_request_resolved: true,
+                prayer_resolved_at: resolvedAt,
+                prayer_resolved_by_profile: { full_name: myFullName },
               }
             : r,
         ),
       );
+    } catch {
       showToast("Failed to update prayer request. Please try again.", "error");
     } finally {
       setResolvingPrayerIds((prev) => {
@@ -1099,18 +1087,6 @@ export default function AdminDashboard() {
     if (resolvingFollowUpIds.has(id)) return;
     setResolvingFollowUpIds((prev) => new Set(prev).add(id));
     const resolvedAt = new Date().toISOString();
-    setFollowUps((prev) =>
-      prev.map((f) =>
-        f.id === id
-          ? {
-              ...f,
-              follow_up_resolved: true,
-              follow_up_resolved_at: resolvedAt,
-              follow_up_resolved_by_profile: { full_name: myFullName },
-            }
-          : f,
-      ),
-    );
     try {
       const { error } = await supabase
         .from("contact_logs")
@@ -1121,19 +1097,19 @@ export default function AdminDashboard() {
         })
         .eq("id", id);
       if (error) throw error;
-    } catch {
       setFollowUps((prev) =>
         prev.map((f) =>
           f.id === id
             ? {
                 ...f,
-                follow_up_resolved: false,
-                follow_up_resolved_at: null,
-                follow_up_resolved_by_profile: null,
+                follow_up_resolved: true,
+                follow_up_resolved_at: resolvedAt,
+                follow_up_resolved_by_profile: { full_name: myFullName },
               }
             : f,
         ),
       );
+    } catch {
       showToast("Failed to update follow-up. Please try again.", "error");
     } finally {
       setResolvingFollowUpIds((prev) => {
