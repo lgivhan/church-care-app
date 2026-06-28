@@ -23,6 +23,30 @@
 import { useState } from "react";
 import { supabase, getTokenSafe } from "../lib/supabaseClient";
 
+function ToggleButton({
+  active,
+  onClick,
+  activeClass,
+  hoverClass,
+  label,
+  icon,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-xl border transition-colors ${
+        active
+          ? activeClass
+          : `bg-white text-stone-500 border-stone-200 ${hoverClass}`
+      }`}
+    >
+      <span className="text-xs">{active ? icon : ""}</span>
+      {label}
+    </button>
+  );
+}
+
 function getContactMethodOptions(member) {
   const options = [];
   if (member?.phone) {
@@ -245,223 +269,216 @@ export default function ContactModal({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        onClick={onClose}
+      />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                {isEditing ? "Edit Notes" : "Log Contact"}
-              </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {member?.first_name} {member?.last_name}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="relative bg-gradient-to-br from-amber-50 to-stone-50 rounded-t-2xl px-5 pt-5 pb-4 border-b border-stone-100">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">
+                  {isEditing ? "Edit contact" : "New contact"}
+                </p>
+                <h2 className="text-xl font-bold text-stone-800">
+                  {member?.first_name} {member?.last_name}
+                </h2>
+              </div>
+              <button
+                onClick={onClose}
+                className="mt-0.5 p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          {/* Proxy logging banner */}
-          {onBehalfOf && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-blue-700 text-sm">
-                Logging on behalf of{" "}
-                <span className="font-medium">{onBehalfOf.full_name}</span>
-              </p>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Contact method dropdown */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                How did you contact this person?
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <select
-                value={contactMethod}
-                onChange={(e) => {
-                  setContactMethod(e.target.value);
-                  setMethodError(false);
-                }}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  methodError
-                    ? "border-red-400 bg-red-50 text-red-900"
-                    : "border-gray-200"
-                }`}
-              >
-                <option value="">Select a method...</option>
-                {contactMethodOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {contactMethod === "voicemail" && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Note: Voicemail means the member wasn't reached directly.
-                  Consider flagging for follow-up below.
+          <div className="px-5 py-4 space-y-5">
+            {/* Proxy logging banner */}
+            {onBehalfOf && (
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <p className="text-amber-800 text-sm">
+                  Logging on behalf of{" "}
+                  <span className="font-semibold">{onBehalfOf.full_name}</span>
                 </p>
-              )}
-            </div>
-            {/* Heard from */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Did you hear back from this person?
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHeardFrom(true)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    heardFrom === true
-                      ? "bg-green-600 text-white border-green-600"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-green-50"
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Contact method dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">
+                  How did you contact this person?
+                  <span className="text-red-400 ml-1">*</span>
+                </label>
+                <select
+                  value={contactMethod}
+                  onChange={(e) => {
+                    setContactMethod(e.target.value);
+                    setMethodError(false);
+                  }}
+                  className={`w-full px-3 py-2.5 border rounded-xl text-sm bg-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-shadow ${
+                    methodError
+                      ? "border-red-300 bg-red-50 text-red-900"
+                      : "border-stone-200 text-stone-800"
                   }`}
                 >
-                  Yes
+                  <option value="">Select a method…</option>
+                  {contactMethodOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {contactMethod === "voicemail" && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2">
+                    Voicemail means the member wasn't reached directly —
+                    consider flagging for follow-up.
+                  </p>
+                )}
+              </div>
+
+              {/* Heard from */}
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">
+                  Did you hear back from this person?
+                  <span className="text-red-400 ml-1">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <ToggleButton
+                    active={heardFrom === true}
+                    onClick={() => setHeardFrom(true)}
+                    activeClass="bg-emerald-500 border-emerald-500 text-white"
+                    hoverClass="hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700"
+                    label="Yes"
+                    icon="✓"
+                  />
+                  <ToggleButton
+                    active={heardFrom === false}
+                    onClick={() => setHeardFrom(false)}
+                    activeClass="bg-stone-500 border-stone-500 text-white"
+                    hoverClass="hover:bg-stone-50"
+                    label="No"
+                    icon="✗"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  placeholder="What happened during this contact? Include any prayer requests or concerns to flag for the pastoral team."
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-50 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none transition-shadow"
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-stone-100" />
+
+              {/* Needs follow-up */}
+              <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4">
+                <label className="block text-sm font-semibold text-amber-900 mb-2">
+                  Does this person need a follow-up from the elders?
+                  <span className="text-red-400 ml-1">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <ToggleButton
+                    active={needsFollowUp === true}
+                    onClick={() => setNeedsFollowUp(true)}
+                    activeClass="bg-amber-500 border-amber-500 text-white"
+                    hoverClass="hover:bg-amber-100 hover:border-amber-300 hover:text-amber-800"
+                    label="Yes"
+                    icon="✓"
+                  />
+                  <ToggleButton
+                    active={needsFollowUp === false}
+                    onClick={() => setNeedsFollowUp(false)}
+                    activeClass="bg-stone-500 border-stone-500 text-white"
+                    hoverClass="hover:bg-stone-100"
+                    label="No"
+                    icon="✗"
+                  />
+                </div>
+              </div>
+
+              {/* Prayer ministry request */}
+              <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4">
+                <label className="block text-sm font-semibold text-violet-900 mb-2">
+                  Prayer ministry request?
+                  <span className="text-red-400 ml-1">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <ToggleButton
+                    active={prayerRequest === true}
+                    onClick={() => setPrayerRequest(true)}
+                    activeClass="bg-violet-600 border-violet-600 text-white"
+                    hoverClass="hover:bg-violet-100 hover:border-violet-300 hover:text-violet-800"
+                    label="Yes"
+                    icon="✓"
+                  />
+                  <ToggleButton
+                    active={prayerRequest === false}
+                    onClick={() => setPrayerRequest(false)}
+                    activeClass="bg-stone-500 border-stone-500 text-white"
+                    hoverClass="hover:bg-stone-100"
+                    label="No"
+                    icon="✗"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 text-sm font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
                 </button>
                 <button
-                  type="button"
-                  onClick={() => setHeardFrom(false)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    heardFrom === false
-                      ? "bg-stone-500 text-white border-stone-500"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
-                  }`}
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-2.5 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors shadow-sm shadow-amber-200"
                 >
-                  No
+                  {loading
+                    ? "Saving…"
+                    : isEditing
+                      ? "Save Changes"
+                      : "Mark as Contacted"}
                 </button>
               </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                placeholder="What happened during this contact? Include any prayer requests or concerns to flag for the pastoral team."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
-            </div>
-
-            {/* Needs follow-up */}
-            <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">
-                Does this person need a follow-up?
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNeedsFollowUp(true)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    needsFollowUp === true
-                      ? "bg-amber-500 text-white border-amber-500"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-amber-50"
-                  }`}
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNeedsFollowUp(false)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    needsFollowUp === false
-                      ? "bg-stone-500 text-white border-stone-500"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
-                  }`}
-                >
-                  No
-                </button>
-              </div>
-            </div>
-
-            {/* Prayer ministry request */}
-            <div>
-              <label className="block text-sm font-medium text-blue-800 mb-1">
-                Prayer ministry request?
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPrayerRequest(true)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    prayerRequest === true
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-blue-50"
-                  }`}
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrayerRequest(false)}
-                  className={`py-2.5 text-sm font-medium rounded-lg border transition-colors ${
-                    prayerRequest === false
-                      ? "bg-stone-500 text-white border-stone-500"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
-                  }`}
-                >
-                  No
-                </button>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 rounded-lg transition-colors"
-              >
-                {loading
-                  ? "Saving..."
-                  : isEditing
-                    ? "Save Changes"
-                    : "Mark as Contacted"}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </>
