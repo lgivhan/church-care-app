@@ -147,3 +147,20 @@ export function getAccessToken() {
     return null;
   }
 }
+
+// Returns the full session object from localStorage synchronously.
+// Used as a fallback when supabase.auth.getSession() hangs on mobile
+// Safari (token-refresh stall after fresh sign-in).
+export function getSessionFromStorage() {
+  try {
+    const raw = localStorage.getItem(
+      `sb-${import.meta.env.VITE_SUPABASE_URL.split("//")[1].split(".")[0]}-auth-token`,
+    );
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.access_token || !parsed?.user) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}

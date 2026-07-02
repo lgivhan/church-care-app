@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, getSessionFromStorage } from "../lib/supabaseClient";
 
 export default function ProtectedRoute({ children, requiredRole }) {
   const [loading, setLoading] = useState(true);
@@ -27,10 +27,18 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
     async function loadSessionAndProfile() {
       try {
-        // First check for an existing session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // Race getSession() against a 3-second localStorage fallback.
+        // On mobile Safari, getSession() can stall indefinitely if the SDK
+        // triggers an internal token refresh right after sign-in. Reading
+        // from localStorage is synchronous and always resolves immediately.
+        const sdkSession = supabase.auth
+          .getSession()
+          .then(({ data }) => data?.session ?? null)
+          .catch(() => null);
+        const storageSession = new Promise((resolve) =>
+          setTimeout(() => resolve(getSessionFromStorage()), 3000),
+        );
+        const session = await Promise.race([sdkSession, storageSession]);
 
         if (!mounted) return;
 
