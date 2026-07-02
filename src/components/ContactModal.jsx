@@ -76,6 +76,8 @@ export default function ContactModal({
   const member = assignment.members;
   const isEditing = !!existingLog;
 
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+
   const [notes, setNotes] = useState(existingLog?.notes ?? "");
   const [needsFollowUp, setNeedsFollowUp] = useState(
     existingLog?.needs_follow_up ?? null,
@@ -90,6 +92,7 @@ export default function ContactModal({
     existingLog?.prayer_request ?? null,
   );
   const [heardFrom, setHeardFrom] = useState(existingLog?.heard_from ?? null);
+  const [contactedDate, setContactedDate] = useState(todayStr);
   const contactMethodOptions = getContactMethodOptions(member);
 
   async function handleSubmit(e) {
@@ -180,7 +183,9 @@ export default function ContactModal({
           return;
         }
 
-        const contactedAt = new Date().toISOString();
+        const contactedAt = onBehalfOf
+          ? new Date(contactedDate + "T12:00:00").toISOString()
+          : new Date().toISOString();
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`,
@@ -312,11 +317,23 @@ export default function ContactModal({
           <div className="px-5 py-4 space-y-5">
             {/* Proxy logging banner */}
             {onBehalfOf && (
-              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl space-y-3">
                 <p className="text-amber-800 text-sm">
                   Logging on behalf of{" "}
                   <span className="font-semibold">{onBehalfOf.full_name}</span>
                 </p>
+                <div>
+                  <label className="block text-xs font-semibold text-amber-900 mb-1.5">
+                    Date of contact
+                  </label>
+                  <input
+                    type="date"
+                    value={contactedDate}
+                    max={todayStr}
+                    onChange={(e) => setContactedDate(e.target.value)}
+                    className="px-3 py-2 border border-amber-200 rounded-xl text-sm bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                  />
+                </div>
               </div>
             )}
 
