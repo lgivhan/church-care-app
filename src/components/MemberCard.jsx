@@ -187,7 +187,7 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
             onClick={() => onComplete(assignment)}
             className="w-full text-center text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg transition-colors"
           >
-            Complete Contact
+            Record Contact
           </button>
         ) : (
           <button
