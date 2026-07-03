@@ -80,7 +80,7 @@ export default function ContactModal({
 
   const [notes, setNotes] = useState(existingLog?.notes ?? "");
   const [needsFollowUp, setNeedsFollowUp] = useState(
-    existingLog?.needs_follow_up ?? null,
+    existingLog?.needs_follow_up ?? false,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -89,7 +89,7 @@ export default function ContactModal({
   );
   const [methodError, setMethodError] = useState(false);
   const [prayerRequest, setPrayerRequest] = useState(
-    existingLog?.prayer_request ?? null,
+    existingLog?.prayer_request ?? false,
   );
   const [heardFrom, setHeardFrom] = useState(existingLog?.heard_from ?? null);
   const [contactedDate, setContactedDate] = useState(todayStr);
@@ -104,9 +104,6 @@ export default function ContactModal({
     if (value !== true) {
       setNeedsFollowUp(false);
       setPrayerRequest(false);
-    } else {
-      setNeedsFollowUp(null);
-      setPrayerRequest(null);
     }
   }
 
@@ -126,18 +123,6 @@ export default function ContactModal({
 
     if (heardFrom === null) {
       setError("Please indicate whether you heard back from this person.");
-      setLoading(false);
-      return;
-    }
-
-    if (showFollowUpFields && needsFollowUp === null) {
-      setError("Please indicate whether this person needs a follow-up.");
-      setLoading(false);
-      return;
-    }
-
-    if (showFollowUpFields && prayerRequest === null) {
-      setError("Please indicate whether this person has a prayer request.");
       setLoading(false);
       return;
     }
@@ -435,59 +420,30 @@ export default function ContactModal({
 
               {showFollowUpFields && (
                 <>
-                  {/* Divider */}
                   <div className="border-t border-stone-100" />
-
-                  {/* Needs follow-up */}
-                  <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4">
-                    <label className="block text-sm font-semibold text-amber-900 mb-2">
-                      Does this person need a follow-up from the elders?
-                      <span className="text-red-400 ml-1">*</span>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={needsFollowUp === true}
+                        onChange={(e) => setNeedsFollowUp(e.target.checked)}
+                        className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-stone-700">
+                        Flag for elder follow-up
+                      </span>
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <ToggleButton
-                        active={needsFollowUp === true}
-                        onClick={() => setNeedsFollowUp(true)}
-                        activeClass="bg-amber-500 border-amber-500 text-white"
-                        hoverClass="hover:bg-amber-100 hover:border-amber-300 hover:text-amber-800"
-                        label="Yes"
-                        icon="✓"
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={prayerRequest === true}
+                        onChange={(e) => setPrayerRequest(e.target.checked)}
+                        className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
                       />
-                      <ToggleButton
-                        active={needsFollowUp === false}
-                        onClick={() => setNeedsFollowUp(false)}
-                        activeClass="bg-stone-500 border-stone-500 text-white"
-                        hoverClass="hover:bg-stone-100"
-                        label="No"
-                        icon="✗"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Prayer ministry request */}
-                  <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-4">
-                    <label className="block text-sm font-semibold text-violet-900 mb-2">
-                      Prayer ministry request?
-                      <span className="text-red-400 ml-1">*</span>
+                      <span className="text-sm font-medium text-stone-700">
+                        Prayer ministry request
+                      </span>
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <ToggleButton
-                        active={prayerRequest === true}
-                        onClick={() => setPrayerRequest(true)}
-                        activeClass="bg-violet-600 border-violet-600 text-white"
-                        hoverClass="hover:bg-violet-100 hover:border-violet-300 hover:text-violet-800"
-                        label="Yes"
-                        icon="✓"
-                      />
-                      <ToggleButton
-                        active={prayerRequest === false}
-                        onClick={() => setPrayerRequest(false)}
-                        activeClass="bg-stone-500 border-stone-500 text-white"
-                        hoverClass="hover:bg-stone-100"
-                        label="No"
-                        icon="✗"
-                      />
-                    </div>
                   </div>
                 </>
               )}
