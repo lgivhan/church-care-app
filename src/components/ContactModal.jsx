@@ -121,15 +121,15 @@ export default function ContactModal({
       return;
     }
 
-    if (heardFrom === null) {
-      setError("Please indicate whether you heard back from this person.");
+    if (!contactMethod) {
+      setError("Please select how you contacted this person.");
+      setMethodError(true);
       setLoading(false);
       return;
     }
 
-    if (!contactMethod) {
-      setError("Please select how you contacted this person.");
-      setMethodError(true);
+    if (heardFrom === null) {
+      setError("Please indicate whether you heard back from this person.");
       setLoading(false);
       return;
     }
@@ -412,7 +412,7 @@ export default function ContactModal({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="What happened during this contact? Include any prayer requests or concerns to flag for the pastoral team."
                   className="w-full px-3 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-50 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none transition-shadow"
                 />
@@ -421,26 +421,42 @@ export default function ContactModal({
               {showFollowUpFields && (
                 <>
                   <div className="border-t border-stone-100" />
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer select-none transition-colors ${
+                        needsFollowUp
+                          ? "bg-amber-50 border-amber-300"
+                          : "bg-stone-50 border-stone-200 hover:bg-amber-50/50 hover:border-amber-200"
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         checked={needsFollowUp === true}
                         onChange={(e) => setNeedsFollowUp(e.target.checked)}
-                        className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+                        className="w-4 h-4 rounded accent-amber-500 cursor-pointer shrink-0"
                       />
-                      <span className="text-sm font-medium text-stone-700">
+                      <span
+                        className={`text-sm font-medium ${needsFollowUp ? "text-amber-900" : "text-stone-600"}`}
+                      >
                         Flag for elder follow-up
                       </span>
                     </label>
-                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <label
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer select-none transition-colors ${
+                        prayerRequest
+                          ? "bg-violet-50 border-violet-300"
+                          : "bg-stone-50 border-stone-200 hover:bg-violet-50/50 hover:border-violet-200"
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         checked={prayerRequest === true}
                         onChange={(e) => setPrayerRequest(e.target.checked)}
-                        className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-violet-600 cursor-pointer shrink-0"
                       />
-                      <span className="text-sm font-medium text-stone-700">
+                      <span
+                        className={`text-sm font-medium ${prayerRequest ? "text-violet-900" : "text-stone-600"}`}
+                      >
                         Prayer ministry request
                       </span>
                     </label>
