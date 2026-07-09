@@ -235,6 +235,9 @@ export default function AdminDashboard() {
     dir: "asc",
   });
   const [showExcludedContacts, setShowExcludedContacts] = useState(false);
+  const [noteTarget, setNoteTarget] = useState(null); // { id, name }
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   // History tab filters
   const [historyMemberSearch, setHistoryMemberSearch] = useState("");
@@ -346,7 +349,7 @@ export default function AdminDashboard() {
         caller_id,
         member_id,
         profiles!assignments_caller_id_fkey (full_name, email, ministry, is_non_technical),
-        members (first_name, last_name, email, phone, address, birthday, membership_type, avatar_url)
+        members (first_name, last_name, email, phone, address, birthday, membership_type, avatar_url, care_note)
       `,
       )
       .eq("week_starting", selectedWeek)
@@ -428,7 +431,7 @@ export default function AdminDashboard() {
     const { data } = await supabase
       .from("members")
       .select(
-        "id, first_name, last_name, membership_type, excluded_from_assignments, gender, is_child",
+        "id, first_name, last_name, membership_type, excluded_from_assignments, gender, is_child, care_note",
       )
       .order("last_name", { ascending: true });
     setAllMembers(data ?? []);
@@ -536,7 +539,8 @@ export default function AdminDashboard() {
         address,
         birthday,
         membership_type,
-        avatar_url
+        avatar_url,
+        care_note
       )
     `,
       )
@@ -740,6 +744,44 @@ export default function AdminDashboard() {
       );
     } catch {
       showToast("Failed to update member. Please try again.", "error");
+    }
+  }
+
+  function openNoteModal(row) {
+    setNoteTarget({ id: row.id, name: row.name });
+    setNoteDraft(row.careNote ?? "");
+  }
+
+  async function saveCareNote() {
+    if (!noteTarget || savingNote) return;
+    const { id } = noteTarget;
+    const note = noteDraft.trim() || null;
+    setSavingNote(true);
+    try {
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/members?id=eq.${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ care_note: note }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+      setAllMembers((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, care_note: note } : m)),
+      );
+      setNoteTarget(null);
+      showToast(note ? "Note saved." : "Note removed.");
+    } catch {
+      showToast("Failed to save note. Please try again.", "error");
+    } finally {
+      setSavingNote(false);
     }
   }
 
@@ -1399,6 +1441,7 @@ export default function AdminDashboard() {
       lastContacted: lastContactedMap[m.id] ?? null,
       lastHeardFrom: lastHeardFromMap[m.id] ?? null,
       excluded: m.excluded_from_assignments ?? false,
+      careNote: m.care_note ?? null,
     }))
     .sort((a, b) => {
       const { col, dir } = contactsSort;
@@ -2811,7 +2854,18 @@ export default function AdminDashboard() {
                           )}
                         </p>
                       </div>
-                      <div className="mt-3 flex justify-end">
+                      {row.careNote && (
+                        <p className="mt-2 text-xs text-sky-800 bg-sky-50 border border-sky-100 rounded-lg px-2.5 py-1.5">
+                          📝 {row.careNote}
+                        </p>
+                      )}
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          onClick={() => openNoteModal(row)}
+                          className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-sky-50 text-sky-700 hover:bg-sky-100"
+                        >
+                          {row.careNote ? "Edit Note" : "Add Note"}
+                        </button>
                         <button
                           onClick={() =>
                             toggleMemberExclusion(row.id, row.excluded)
@@ -2853,6 +2907,9 @@ export default function AdminDashboard() {
                             </span>
                           </th>
                         ))}
+                        <th className="text-left px-4 py-3 text-stone-500 font-medium text-xs uppercase tracking-wide">
+                          Note
+                        </th>
                         <th className="text-left px-4 py-3 text-stone-500 font-medium text-xs uppercase tracking-wide">
                           Assignments
                         </th>
@@ -2906,6 +2963,19 @@ export default function AdminDashboard() {
                               ) : (
                                 <span className="text-stone-400">Never</span>
                               )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => openNoteModal(row)}
+                                title={row.careNote ?? "Add a note"}
+                                className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors max-w-[200px] truncate block text-left ${
+                                  row.careNote
+                                    ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                    : "text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                                }`}
+                              >
+                                {row.careNote ?? "+ Add note"}
+                              </button>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <button
@@ -3741,6 +3811,49 @@ export default function AdminDashboard() {
           assignmentsByVolunteer={printAssignmentsByVolunteer}
           weekStarting={selectedWeek}
         />
+      )}
+
+      {/* Contact note modal */}
+      {noteTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setNoteTarget(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Note for {noteTarget.name}
+              </h2>
+              <p className="text-sm text-stone-500 mb-4">
+                Shown to whoever is assigned to contact this person — e.g.
+                &ldquo;Cannot receive text messages.&rdquo;
+              </p>
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                rows={3}
+                placeholder="Add a note…"
+                className="w-full px-3 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-50 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none mb-4"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setNoteTarget(null)}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCareNote}
+                  disabled={savingNote}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
+                >
+                  {savingNote ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Deactivate confirmation modal */}

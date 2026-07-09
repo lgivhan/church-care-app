@@ -150,6 +150,18 @@ export default function MemberCard({ assignment, onComplete, onEdit }) {
         )}
       </div>
 
+      {/* Admin care note (e.g. "cannot receive text messages") */}
+      {member?.care_note && (
+        <div className="p-3 bg-sky-50 border border-sky-100 rounded-xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-700 mb-1">
+            📝 Note from the care team
+          </p>
+          <p className="text-sm text-sky-900 whitespace-pre-wrap">
+            {member.care_note}
+          </p>
+        </div>
+      )}
+
       {/* Contact Actions */}
       {(member?.phone || member?.email) && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

@@ -151,6 +151,17 @@ export default function PrintView({
                             {a.members.membership_type}
                           </div>
                         )}
+                        {a.members?.care_note && (
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: "bold",
+                              marginTop: "3px",
+                            }}
+                          >
+                            Note: {a.members.care_note}
+                          </div>
+                        )}
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         {formatPhone(a.members?.phone)}
