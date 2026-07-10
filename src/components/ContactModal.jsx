@@ -92,12 +92,19 @@ export default function ContactModal({
     existingLog?.prayer_request ?? false,
   );
   const [heardFrom, setHeardFrom] = useState(existingLog?.heard_from ?? null);
+  const [updateContactInfo, setUpdateContactInfo] = useState(
+    existingLog?.update_contact_info ?? null,
+  );
   const [contactedDate, setContactedDate] = useState(todayStr);
   const contactMethodOptions = getContactMethodOptions(member);
 
   // Follow-up and prayer fields only make sense after a real conversation.
   // Show them only when the volunteer confirms they heard back.
   const showFollowUpFields = heardFrom === true;
+
+  // Notes only matter when there's something to report: a real
+  // conversation, or contact info that needs correcting.
+  const showNotes = heardFrom === true || updateContactInfo === true;
 
   function handleHeardFrom(value) {
     setHeardFrom(value);
@@ -113,14 +120,6 @@ export default function ContactModal({
     setError("");
     setMethodError(false);
 
-    if (!notes.trim()) {
-      setError(
-        "Please add a note before saving. Even a brief summary helps the pastoral team.",
-      );
-      setLoading(false);
-      return;
-    }
-
     if (!contactMethod) {
       setError("Please select how you contacted this person.");
       setMethodError(true);
@@ -130,6 +129,22 @@ export default function ContactModal({
 
     if (heardFrom === null) {
       setError("Please indicate whether you heard back from this person.");
+      setLoading(false);
+      return;
+    }
+
+    if (updateContactInfo === null) {
+      setError(
+        "Please indicate whether this person's contact info needs to be updated.",
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (showNotes && !notes.trim()) {
+      setError(
+        "Please add a note before saving. Even a brief summary helps the pastoral team.",
+      );
       setLoading(false);
       return;
     }
@@ -152,6 +167,7 @@ export default function ContactModal({
         contact_method: contactMethod,
         prayer_request: showFollowUpFields ? prayerRequest : false,
         heard_from: heardFrom,
+        update_contact_info: updateContactInfo === true,
       };
 
       if (isEditing) {
@@ -416,19 +432,53 @@ export default function ContactModal({
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Update contact info */}
               <div>
                 <label className="block text-sm font-semibold text-stone-700 mb-2">
-                  Notes
+                  Does their contact info need to be updated?
+                  <span className="text-red-400 ml-1">*</span>
                 </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="What happened during this contact? Include any prayer requests or concerns to flag for the pastoral team."
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-50 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none transition-shadow"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <ToggleButton
+                    active={updateContactInfo === true}
+                    onClick={() => setUpdateContactInfo(true)}
+                    activeClass="bg-sky-500 border-sky-500 text-white"
+                    hoverClass="hover:bg-sky-50 hover:border-sky-200 hover:text-sky-700"
+                    label="Yes"
+                    icon="✓"
+                  />
+                  <ToggleButton
+                    active={updateContactInfo === false}
+                    onClick={() => setUpdateContactInfo(false)}
+                    activeClass="bg-stone-500 border-stone-500 text-white"
+                    hoverClass="hover:bg-stone-50"
+                    label="No"
+                    icon="✗"
+                  />
+                </div>
+                {updateContactInfo === true && (
+                  <p className="text-xs text-sky-700 bg-sky-50 border border-sky-100 rounded-lg px-3 py-2 mt-2">
+                    Describe what needs updating in the notes (e.g. new phone
+                    number, moved away) so an admin can correct it.
+                  </p>
+                )}
               </div>
+
+              {/* Notes */}
+              {showNotes && (
+                <div>
+                  <label className="block text-sm font-semibold text-stone-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    placeholder="What happened during this contact? Include any prayer requests or concerns to flag for the pastoral team."
+                    className="w-full px-3 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-50 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none transition-shadow"
+                  />
+                </div>
+              )}
 
               {showFollowUpFields && (
                 <>

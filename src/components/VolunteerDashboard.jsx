@@ -153,7 +153,9 @@ export default function VolunteerDashboard() {
 
         const { data: logData } = await supabase
           .from("contact_logs")
-          .select("id, assignment_id, notes, needs_follow_up, contacted_at")
+          .select(
+            "id, assignment_id, notes, needs_follow_up, contacted_at, contact_method, prayer_request, heard_from, update_contact_info",
+          )
           .in("assignment_id", assignmentIds);
 
         // Index logs by assignment_id for quick lookup

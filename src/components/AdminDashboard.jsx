@@ -221,6 +221,9 @@ export default function AdminDashboard() {
   const [myFullName, setMyFullName] = useState(null);
   const [resolvingPrayerIds, setResolvingPrayerIds] = useState(new Set());
   const [resolvingFollowUpIds, setResolvingFollowUpIds] = useState(new Set());
+  const [resolvingContactInfoIds, setResolvingContactInfoIds] = useState(
+    new Set(),
+  );
   const [printVolunteers, setPrintVolunteers] = useState([]);
   const [printAssignmentsByVolunteer, setPrintAssignmentsByVolunteer] =
     useState({});
@@ -246,6 +249,7 @@ export default function AdminDashboard() {
   const [historyFollowUpOnly, setHistoryFollowUpOnly] = useState(false);
   const [historyPrayerOnly, setHistoryPrayerOnly] = useState(false);
   const [historyNotHeardFrom, setHistoryNotHeardFrom] = useState(false);
+  const [historyInfoUpdateOnly, setHistoryInfoUpdateOnly] = useState(false);
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
@@ -417,6 +421,8 @@ export default function AdminDashboard() {
         contact_method,
         prayer_request,
         heard_from,
+        update_contact_info,
+        contact_info_resolved,
         volunteer_id,
         members (first_name, last_name),
         profiles!contact_logs_volunteer_id_fkey (full_name),
@@ -565,7 +571,7 @@ export default function AdminDashboard() {
       const { data: logData } = await supabase
         .from("contact_logs")
         .select(
-          "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request",
+          "id, assignment_id, notes, needs_follow_up, contact_method, prayer_request, heard_from, update_contact_info",
         )
         .in("assignment_id", assignmentIds);
 
@@ -1162,6 +1168,36 @@ export default function AdminDashboard() {
     }
   }
 
+  async function resolveContactInfo(id) {
+    if (resolvingContactInfoIds.has(id)) return;
+    setResolvingContactInfoIds((prev) => new Set(prev).add(id));
+    const resolvedAt = new Date().toISOString();
+    try {
+      const { error } = await supabase
+        .from("contact_logs")
+        .update({
+          contact_info_resolved: true,
+          contact_info_resolved_at: resolvedAt,
+          contact_info_resolved_by: myUserId,
+        })
+        .eq("id", id);
+      if (error) throw error;
+      setContactLogs((prev) =>
+        prev.map((l) =>
+          l.id === id ? { ...l, contact_info_resolved: true } : l,
+        ),
+      );
+    } catch {
+      showToast("Failed to update. Please try again.", "error");
+    } finally {
+      setResolvingContactInfoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
   function handleProxyLog(assignment) {
     setProxyAssignment(assignment);
     setProxyVolunteer({
@@ -1176,7 +1212,7 @@ export default function AdminDashboard() {
     try {
       const base = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_logs`;
       const select =
-        "id,assignment_id,notes,needs_follow_up,contact_method,prayer_request";
+        "id,assignment_id,notes,needs_follow_up,contact_method,prayer_request,heard_from,update_contact_info";
       const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
       const headers = {
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -1352,6 +1388,11 @@ export default function AdminDashboard() {
     if (historyMethod && log.contact_method !== historyMethod) return false;
     if (historyFollowUpOnly && !log.needs_follow_up) return false;
     if (historyPrayerOnly && !log.prayer_request) return false;
+    if (
+      historyInfoUpdateOnly &&
+      !(log.update_contact_info && !log.contact_info_resolved)
+    )
+      return false;
     if (
       notHeardFromMemberIds !== null &&
       !notHeardFromMemberIds.has(log.member_id)
@@ -3214,6 +3255,16 @@ export default function AdminDashboard() {
                 Prayer request only
               </button>
               <button
+                onClick={() => setHistoryInfoUpdateOnly((p) => !p)}
+                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                  historyInfoUpdateOnly
+                    ? "bg-sky-600 text-white border-sky-600"
+                    : "bg-white text-stone-600 border-stone-200 hover:bg-sky-50"
+                }`}
+              >
+                Info update needed
+              </button>
+              <button
                 onClick={() => setHistoryNotHeardFrom((p) => !p)}
                 className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
                   historyNotHeardFrom
@@ -3228,6 +3279,7 @@ export default function AdminDashboard() {
                 historyMethod ||
                 historyFollowUpOnly ||
                 historyPrayerOnly ||
+                historyInfoUpdateOnly ||
                 historyNotHeardFrom) && (
                 <button
                   onClick={() => {
@@ -3236,6 +3288,7 @@ export default function AdminDashboard() {
                     setHistoryMethod("");
                     setHistoryFollowUpOnly(false);
                     setHistoryPrayerOnly(false);
+                    setHistoryInfoUpdateOnly(false);
                     setHistoryNotHeardFrom(false);
                   }}
                   className="px-3 py-2.5 rounded-xl text-sm text-stone-400 hover:text-stone-600 transition-colors"
@@ -3306,6 +3359,8 @@ export default function AdminDashboard() {
                   historyVolunteerId ||
                   historyMethod ||
                   historyFollowUpOnly ||
+                  historyPrayerOnly ||
+                  historyInfoUpdateOnly ||
                   historyNotHeardFrom
                     ? "No contacts match the current filters."
                     : "No contact logs yet."
@@ -3345,6 +3400,25 @@ export default function AdminDashboard() {
                               Prayer
                             </span>
                           )}
+                          {log.update_contact_info &&
+                            !log.contact_info_resolved && (
+                              <button
+                                onClick={() => resolveContactInfo(log.id)}
+                                disabled={resolvingContactInfoIds.has(log.id)}
+                                title="Tap once the contact info has been corrected"
+                                className="text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 disabled:opacity-50 px-2 py-0.5 rounded-full transition-colors"
+                              >
+                                {resolvingContactInfoIds.has(log.id)
+                                  ? "Saving..."
+                                  : "Update info · mark done"}
+                              </button>
+                            )}
+                          {log.update_contact_info &&
+                            log.contact_info_resolved && (
+                              <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                ✓ Info updated
+                              </span>
+                            )}
                         </div>
                       </div>
                       <p className="text-xs text-stone-500 mb-1">
@@ -3380,7 +3454,7 @@ export default function AdminDashboard() {
                         <Th>Reached?</Th>
                         <Th>Notes</Th>
                         <Th>Date</Th>
-                        <Th>Follow-up</Th>
+                        <Th>Flags</Th>
                       </TableHeader>
                       <tbody className="divide-y divide-stone-50">
                         {filteredContactLogs.map((log) => (
@@ -3426,11 +3500,39 @@ export default function AdminDashboard() {
                               {formatDateTime(log.contacted_at)}
                             </td>
                             <td className="px-4 py-3">
-                              {log.needs_follow_up && (
-                                <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-                                  Follow-up
-                                </span>
-                              )}
+                              <div className="flex flex-wrap gap-1">
+                                {log.needs_follow_up && (
+                                  <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                    Follow-up
+                                  </span>
+                                )}
+                                {log.prayer_request && (
+                                  <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                    Prayer
+                                  </span>
+                                )}
+                                {log.update_contact_info &&
+                                  !log.contact_info_resolved && (
+                                    <button
+                                      onClick={() => resolveContactInfo(log.id)}
+                                      disabled={resolvingContactInfoIds.has(
+                                        log.id,
+                                      )}
+                                      title="Click once the contact info has been corrected"
+                                      className="text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 disabled:opacity-50 px-2.5 py-1 rounded-full transition-colors whitespace-nowrap"
+                                    >
+                                      {resolvingContactInfoIds.has(log.id)
+                                        ? "Saving..."
+                                        : "Update info · mark done"}
+                                    </button>
+                                  )}
+                                {log.update_contact_info &&
+                                  log.contact_info_resolved && (
+                                    <span className="text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                      ✓ Info updated
+                                    </span>
+                                  )}
+                              </div>
                             </td>
                           </tr>
                         ))}
