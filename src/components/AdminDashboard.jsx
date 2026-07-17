@@ -1508,6 +1508,19 @@ export default function AdminDashboard() {
   const activeContactsRows = contactsRows.filter((r) => !r.excluded);
   const excludedContactsRows = contactsRows.filter((r) => r.excluded);
 
+  // Overview — group volunteers/admins by contact progress for the week.
+  // Only people with assignments this week are counted.
+  const volunteersWithAssignments = volunteers.filter((v) => v.assigned > 0);
+  const volunteersNoneContacted = volunteersWithAssignments.filter(
+    (v) => v.completed === 0,
+  );
+  const volunteersSomeContacted = volunteersWithAssignments.filter(
+    (v) => v.completed > 0 && v.completed < v.assigned,
+  );
+  const volunteersAllContacted = volunteersWithAssignments.filter(
+    (v) => v.completed === v.assigned,
+  );
+
   const hasGenderFilteredVolunteers = volunteers.some((v) => v.gender_filter);
   const membersNoGender = hasGenderFilteredVolunteers
     ? allMembers.filter(
@@ -1723,6 +1736,83 @@ export default function AdminDashboard() {
                       width: `${(completedAssignments.length / assignments.length) * 100}%`,
                     }}
                   />
+                </div>
+              </div>
+            )}
+
+            {volunteersWithAssignments.length > 0 && (
+              <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+                  <p className="text-sm font-semibold text-red-800 mb-1">
+                    🔴 Not started ({volunteersNoneContacted.length})
+                  </p>
+                  <p className="text-xs text-red-600 mb-3">
+                    Haven't contacted anyone this week.
+                  </p>
+                  {volunteersNoneContacted.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {volunteersNoneContacted.map((v) => (
+                        <span
+                          key={v.id}
+                          className="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-full"
+                        >
+                          {v.full_name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-red-400">
+                      Everyone has started. 🎉
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <p className="text-sm font-semibold text-amber-800 mb-1">
+                    🟡 In progress ({volunteersSomeContacted.length})
+                  </p>
+                  <p className="text-xs text-amber-600 mb-3">
+                    Have contacted some, but not all, of their assignments.
+                  </p>
+                  {volunteersSomeContacted.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {volunteersSomeContacted.map((v) => (
+                        <span
+                          key={v.id}
+                          className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full"
+                        >
+                          {v.full_name} · {v.completed}/{v.assigned}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-400">
+                      No one is partway through.
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 bg-green-50 border border-green-200 rounded-2xl">
+                  <p className="text-sm font-semibold text-green-800 mb-1">
+                    🟢 All done ({volunteersAllContacted.length})
+                  </p>
+                  <p className="text-xs text-green-600 mb-3">
+                    Have contacted everyone on their list.
+                  </p>
+                  {volunteersAllContacted.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {volunteersAllContacted.map((v) => (
+                        <span
+                          key={v.id}
+                          className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full"
+                        >
+                          {v.full_name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-green-500">No one yet.</p>
+                  )}
                 </div>
               </div>
             )}
