@@ -241,6 +241,11 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
   const toastTimerRef = useRef(null);
 
+  // On sign-in, land on My Contacts if the admin still has pending
+  // contacts this cycle. Applied only once so week changes and manual
+  // tab navigation aren't overridden.
+  const initialTabApplied = useRef(false);
+
   function showToast(message, type = "success") {
     clearTimeout(toastTimerRef.current);
     setToast({ message, type });
@@ -565,13 +570,19 @@ export default function AdminDashboard() {
 
     const activeCycleStart = assignmentData?.[0]?.week_starting ?? todayStr;
     setMyCycleStart(activeCycleStart);
-    setMyAssignments(
-      sortAssignments(
-        (assignmentData ?? []).filter(
-          (a) => a.week_starting === activeCycleStart,
-        ),
+    const cycleAssignments = sortAssignments(
+      (assignmentData ?? []).filter(
+        (a) => a.week_starting === activeCycleStart,
       ),
     );
+    setMyAssignments(cycleAssignments);
+
+    if (!initialTabApplied.current) {
+      initialTabApplied.current = true;
+      if (cycleAssignments.some((a) => a.status === "pending")) {
+        setActiveTab("mycontacts");
+      }
+    }
 
     if (assignmentData && assignmentData.length > 0) {
       const assignmentIds = assignmentData.map((a) => a.id);
