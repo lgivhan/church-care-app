@@ -52,23 +52,6 @@ function formatDateTime(dateStr) {
   });
 }
 
-function getRecentFridays(count = 16) {
-  const fridays = [];
-  const today = new Date();
-  const thisFriday = new Date(today);
-  thisFriday.setDate(today.getDate() - ((today.getDay() - 5 + 7) % 7));
-
-  for (let i = 0; i < count; i++) {
-    const friday = new Date(thisFriday);
-    friday.setDate(thisFriday.getDate() - i * 7);
-    const year = friday.getFullYear();
-    const month = String(friday.getMonth() + 1).padStart(2, "0");
-    const day = String(friday.getDate()).padStart(2, "0");
-    fridays.push(`${year}-${month}-${day}`);
-  }
-  return fridays;
-}
-
 function formatContactMethod(method) {
   const map = {
     call: "📞 Call",
@@ -173,7 +156,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [activeCycleWeek, setActiveCycleWeek] = useState(null);
-  const recentFridays = getRecentFridays();
+  const [assignmentWeeks, setAssignmentWeeks] = useState([]);
 
   const [pendingVolunteers, setPendingVolunteers] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -288,7 +271,31 @@ export default function AdminDashboard() {
       setActiveCycleWeek(detected);
       setSelectedWeek(detected);
     }
+
+    // Populate the week selector with only the weeks that actually have
+    // assignments (cycles are bi-weekly, and cadence has shifted over time,
+    // so generated Friday lists don't match reality). PostgREST has no
+    // DISTINCT, so walk backwards one cycle at a time with limit(1) lookups.
+    async function loadAssignmentWeeks() {
+      const weeks = [];
+      let cursor = null;
+      for (let i = 0; i < 16; i++) {
+        let query = supabase
+          .from("assignments")
+          .select("week_starting")
+          .order("week_starting", { ascending: false })
+          .limit(1);
+        if (cursor) query = query.lt("week_starting", cursor);
+        const { data } = await query;
+        if (!data?.length) break;
+        cursor = data[0].week_starting;
+        weeks.push(cursor);
+      }
+      setAssignmentWeeks(weeks);
+    }
+
     detectActiveCycle();
+    loadAssignmentWeeks();
   }, []);
 
   useEffect(() => {
@@ -1662,10 +1669,13 @@ export default function AdminDashboard() {
               onChange={(e) => setSelectedWeek(e.target.value)}
               className="px-3 py-1.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-white text-stone-700"
             >
-              {recentFridays.map((friday) => (
-                <option key={friday} value={friday}>
-                  {formatDate(friday)}
-                  {friday === activeCycleWeek ? " (current)" : ""}
+              {(assignmentWeeks.includes(selectedWeek)
+                ? assignmentWeeks
+                : [selectedWeek, ...assignmentWeeks]
+              ).map((week) => (
+                <option key={week} value={week}>
+                  {formatDate(week)}
+                  {week === activeCycleWeek ? " (current)" : ""}
                 </option>
               ))}
             </select>
