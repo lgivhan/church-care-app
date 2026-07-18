@@ -1509,8 +1509,11 @@ export default function AdminDashboard() {
   const excludedContactsRows = contactsRows.filter((r) => r.excluded);
 
   // Overview — group volunteers/admins by contact progress for the week.
-  // Only people with assignments this week are counted.
-  const volunteersWithAssignments = volunteers.filter((v) => v.assigned > 0);
+  // Only people with assignments this week are counted. Paper-only
+  // volunteers never log contacts in the app, so they're left out.
+  const volunteersWithAssignments = volunteers.filter(
+    (v) => v.assigned > 0 && !v.is_non_technical,
+  );
   const volunteersNoneContacted = volunteersWithAssignments.filter(
     (v) => v.completed === 0,
   );
