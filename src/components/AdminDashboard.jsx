@@ -188,6 +188,8 @@ export default function AdminDashboard() {
   const [volunteerPaperOnly, setVolunteerPaperOnly] = useState(false);
   const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
+  const [reassignTarget, setReassignTarget] = useState(null); // { id, name, pending }
+  const [reassigning, setReassigning] = useState(false);
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
   const [invitesSentCount, setInvitesSentCount] = useState(null);
   const [volunteerSearch, setVolunteerSearch] = useState("");
@@ -714,6 +716,38 @@ export default function AdminDashboard() {
       }
     } catch {
       showToast("Failed to deactivate volunteer. Please try again.", "error");
+    }
+  }
+
+  async function confirmReassignContacts() {
+    if (!reassignTarget || reassigning || !myUserId) return;
+    const { id, name } = reassignTarget;
+    setReassigning(true);
+    try {
+      const { data, error } = await supabase
+        .from("assignments")
+        .update({ caller_id: myUserId })
+        .eq("caller_id", id)
+        .eq("week_starting", activeCycleWeek)
+        .eq("status", "pending")
+        .select("id");
+      if (error) throw error;
+      const count = data?.length ?? 0;
+      setReassignTarget(null);
+      await Promise.all([
+        loadAssignments(),
+        loadVolunteers(),
+        loadMyAssignments(),
+      ]);
+      showToast(
+        count > 0
+          ? `Moved ${count} contact${count !== 1 ? "s" : ""} from ${name} to your list.`
+          : `${name} has no pending contacts this cycle.`,
+      );
+    } catch {
+      showToast("Failed to reassign contacts. Please try again.", "error");
+    } finally {
+      setReassigning(false);
     }
   }
 
@@ -1252,7 +1286,7 @@ export default function AdminDashboard() {
       });
       setProxyExistingLog(logs[0] ?? null);
       setProxyModalOpen(true);
-    } catch (err) {
+    } catch {
       showToast("Could not load contact log. Please try again.", "error");
     }
   }
@@ -2602,6 +2636,22 @@ export default function AdminDashboard() {
                                   ? "📄 Paper only"
                                   : "Set paper only"}
                               </button>
+                              {selectedWeek === activeCycleWeek &&
+                                v.id !== myUserId &&
+                                v.assigned - v.completed > 0 && (
+                                  <button
+                                    onClick={() =>
+                                      setReassignTarget({
+                                        id: v.id,
+                                        name: v.full_name,
+                                        pending: v.assigned - v.completed,
+                                      })
+                                    }
+                                    className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-lg transition-colors"
+                                  >
+                                    Assign contacts to myself
+                                  </button>
+                                )}
                               {v.role !== "admin" && (
                                 <button
                                   onClick={() =>
@@ -2765,6 +2815,22 @@ export default function AdminDashboard() {
                                         ? "📄 Paper only"
                                         : "Set paper only"}
                                     </button>
+                                    {selectedWeek === activeCycleWeek &&
+                                      v.id !== myUserId &&
+                                      v.assigned - v.completed > 0 && (
+                                        <button
+                                          onClick={() =>
+                                            setReassignTarget({
+                                              id: v.id,
+                                              name: v.full_name,
+                                              pending: v.assigned - v.completed,
+                                            })
+                                          }
+                                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-xl transition-colors"
+                                        >
+                                          Assign contacts to myself
+                                        </button>
+                                      )}
                                     {v.invite_pending && v.role !== "admin" && (
                                       <button
                                         onClick={() =>
@@ -4103,6 +4169,49 @@ export default function AdminDashboard() {
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
                 >
                   Deactivate
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Reassign contacts confirmation modal */}
+      {reassignTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => !reassigning && setReassignTarget(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Assign contacts to yourself?
+              </h2>
+              <p className="text-sm text-stone-500 mb-6">
+                Are you sure you want to assign{" "}
+                <span className="font-medium text-stone-700">
+                  {reassignTarget.name}
+                </span>
+                's contacts to yourself? Their {reassignTarget.pending} pending
+                contact{reassignTarget.pending !== 1 ? "s" : ""} will move to
+                your My Contacts list and no longer appear for them. Contacts
+                they already completed stay on their record.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setReassignTarget(null)}
+                  disabled={reassigning}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReassignContacts}
+                  disabled={reassigning}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
+                >
+                  {reassigning ? "Assigning..." : "Yes, assign to me"}
                 </button>
               </div>
             </div>
