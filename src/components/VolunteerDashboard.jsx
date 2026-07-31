@@ -44,6 +44,32 @@ function getMethodLabel(method) {
   return CONTACT_METHOD_LABELS[method] ?? method ?? "Unknown";
 }
 
+function matchesSearch(member, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const name =
+    `${member?.first_name ?? ""} ${member?.last_name ?? ""}`.toLowerCase();
+  return name.includes(q);
+}
+
+function SearchIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+      />
+    </svg>
+  );
+}
+
 export default function VolunteerDashboard() {
   const [profile, setProfile] = useState(null);
   const [assignments, setAssignments] = useState([]);
@@ -53,6 +79,7 @@ export default function VolunteerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -255,6 +282,19 @@ export default function VolunteerDashboard() {
   ).length;
   const daysLeft = cycleStart ? getDaysLeftInCycle(cycleStart) : null;
 
+  const filteredAssignments = assignments.filter((a) =>
+    matchesSearch(a.members, searchQuery),
+  );
+  const filteredAdHocLogs = adHocLogs.filter((log) =>
+    matchesSearch(log.members, searchQuery),
+  );
+  const hasSearch = searchQuery.trim().length > 0;
+  const noSearchResults =
+    hasSearch &&
+    filteredAssignments.length === 0 &&
+    filteredAdHocLogs.length === 0 &&
+    (assignments.length > 0 || adHocLogs.length > 0);
+
   // --------------------------------------------------------
   // Render states
   // --------------------------------------------------------
@@ -364,6 +404,20 @@ export default function VolunteerDashboard() {
           )}
         </div>
 
+        {/* Search / filter */}
+        {(assignments.length > 0 || adHocLogs.length > 0) && (
+          <div className="mb-4 relative">
+            <SearchIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search contacts by name..."
+              className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
+            />
+          </div>
+        )}
+
         {/* Empty state */}
         {assignments.length === 0 && (
           <div className="text-center py-16 px-4">
@@ -391,10 +445,25 @@ export default function VolunteerDashboard() {
           </div>
         )}
 
+        {/* No search results */}
+        {noSearchResults && (
+          <div className="text-center py-16 px-4">
+            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <SearchIcon className="w-8 h-8 text-stone-400" />
+            </div>
+            <h3 className="text-stone-600 font-medium mb-1">
+              No contacts match "{searchQuery}"
+            </h3>
+            <p className="text-stone-400 text-sm">
+              Try a different name or clear the search.
+            </p>
+          </div>
+        )}
+
         {/* Assignment cards */}
-        {assignments.length > 0 && (
+        {filteredAssignments.length > 0 && (
           <div className="flex flex-col gap-4">
-            {assignments.map((assignment) => (
+            {filteredAssignments.map((assignment) => (
               <MemberCard
                 key={`${assignment.id}-${assignment.status}`}
                 assignment={assignment}
@@ -406,7 +475,7 @@ export default function VolunteerDashboard() {
         )}
 
         {/* Ad-hoc contacts logged by coordinator */}
-        {adHocLogs.length > 0 && (
+        {filteredAdHocLogs.length > 0 && (
           <div className="mt-8">
             <div className="mb-3">
               <h2 className="text-base font-semibold text-stone-700">
@@ -417,7 +486,7 @@ export default function VolunteerDashboard() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              {adHocLogs.map((log) => {
+              {filteredAdHocLogs.map((log) => {
                 const member = log.members;
                 const contactedDate = new Date(
                   log.contacted_at,

@@ -76,6 +76,32 @@ function HeartIcon({ className }) {
   );
 }
 
+function SearchIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+      />
+    </svg>
+  );
+}
+
+function matchesSearch(member, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const name =
+    `${member?.first_name ?? ""} ${member?.last_name ?? ""}`.toLowerCase();
+  return name.includes(q);
+}
+
 function TabButton({ label, active, onClick, badge }) {
   return (
     <button
@@ -175,6 +201,7 @@ export default function AdminDashboard() {
   const [mySelectedAssignment, setMySelectedAssignment] = useState(null);
   const [myEditingLog, setMyEditingLog] = useState(null);
   const [myUserId, setMyUserId] = useState(null);
+  const [myContactsSearch, setMyContactsSearch] = useState("");
   const [showAddVolunteer, setShowAddVolunteer] = useState(false);
   const [newVolunteerName, setNewVolunteerName] = useState("");
   const [newVolunteerEmail, setNewVolunteerEmail] = useState("");
@@ -1437,6 +1464,18 @@ export default function AdminDashboard() {
     (a) => a.status === "completed",
   );
 
+  const filteredMyAssignments = myAssignments.filter((a) =>
+    matchesSearch(a.members, myContactsSearch),
+  );
+  const filteredMyAdHocLogs = myAdHocLogs.filter((log) =>
+    matchesSearch(log.members, myContactsSearch),
+  );
+  const noMyContactsSearchResults =
+    myContactsSearch.trim().length > 0 &&
+    filteredMyAssignments.length === 0 &&
+    filteredMyAdHocLogs.length === 0 &&
+    (myAssignments.length > 0 || myAdHocLogs.length > 0);
+
   const filteredAssignments = assignments.filter((a) => {
     if (selectedVolunteer && a.caller_id !== selectedVolunteer.id) return false;
     if (memberSearch.trim()) {
@@ -2073,6 +2112,33 @@ export default function AdminDashboard() {
               )}
             </div>
 
+            {(myAssignments.length > 0 || myAdHocLogs.length > 0) && (
+              <div className="mb-4 relative max-w-2xl mx-auto w-full">
+                <SearchIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={myContactsSearch}
+                  onChange={(e) => setMyContactsSearch(e.target.value)}
+                  placeholder="Search contacts by name..."
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
+                />
+              </div>
+            )}
+
+            {noMyContactsSearchResults && (
+              <div className="text-center py-16 px-4">
+                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <SearchIcon className="w-8 h-8 text-stone-400" />
+                </div>
+                <h3 className="text-stone-600 font-medium mb-1">
+                  No contacts match "{myContactsSearch}"
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Try a different name or clear the search.
+                </p>
+              </div>
+            )}
+
             {myAssignments.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2099,7 +2165,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full">
-                {myAssignments.map((assignment) => (
+                {filteredMyAssignments.map((assignment) => (
                   <MemberCard
                     key={`${assignment.id}-${assignment.status}`}
                     assignment={assignment}
@@ -2110,7 +2176,7 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {myAdHocLogs.length > 0 && (
+            {filteredMyAdHocLogs.length > 0 && (
               <div className="mt-8 max-w-2xl mx-auto w-full">
                 <div className="mb-3">
                   <h2 className="text-base font-semibold text-stone-700">
@@ -2121,7 +2187,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {myAdHocLogs.map((log) => {
+                  {filteredMyAdHocLogs.map((log) => {
                     const member = log.members;
                     const contactedDate = new Date(
                       log.contacted_at,
