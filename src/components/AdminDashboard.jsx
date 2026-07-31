@@ -190,6 +190,11 @@ export default function AdminDashboard() {
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
   const [reassignTarget, setReassignTarget] = useState(null); // { id, name, pending }
   const [reassigning, setReassigning] = useState(false);
+  const [moveTarget, setMoveTarget] = useState(null); // assignment row being reassigned
+  const [movePickedId, setMovePickedId] = useState("");
+  const [moveSearch, setMoveSearch] = useState("");
+  const [showMoveDropdown, setShowMoveDropdown] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [showSendInvitesConfirm, setShowSendInvitesConfirm] = useState(false);
   const [invitesSentCount, setInvitesSentCount] = useState(null);
   const [volunteerSearch, setVolunteerSearch] = useState("");
@@ -748,6 +753,43 @@ export default function AdminDashboard() {
       showToast("Failed to reassign contacts. Please try again.", "error");
     } finally {
       setReassigning(false);
+    }
+  }
+
+  async function confirmMoveAssignment() {
+    if (!moveTarget || !movePickedId || moving) return;
+    setMoving(true);
+    try {
+      const { data, error } = await supabase
+        .from("assignments")
+        .update({ caller_id: movePickedId })
+        .eq("id", moveTarget.id)
+        .eq("status", "pending")
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) {
+        showToast(
+          "That contact is no longer pending — it may have just been completed.",
+          "error",
+        );
+      } else {
+        const newVolunteer = volunteers.find((v) => v.id === movePickedId);
+        showToast(
+          `Moved ${moveTarget.members?.first_name} ${moveTarget.members?.last_name} to ${newVolunteer?.full_name ?? "the new volunteer"}.`,
+        );
+      }
+      setMoveTarget(null);
+      setMovePickedId("");
+      setMoveSearch("");
+      await Promise.all([
+        loadAssignments(),
+        loadVolunteers(),
+        loadMyAssignments(),
+      ]);
+    } catch {
+      showToast("Failed to reassign contact. Please try again.", "error");
+    } finally {
+      setMoving(false);
     }
   }
 
@@ -1458,6 +1500,15 @@ export default function AdminDashboard() {
         v.full_name.toLowerCase().includes(volunteerSearch.toLowerCase()),
       )
     : volunteers;
+
+  const filteredMoveOptions = volunteers
+    .filter((v) => v.is_active && v.id !== moveTarget?.caller_id)
+    .filter((v) =>
+      moveSearch.trim()
+        ? v.full_name.toLowerCase().includes(moveSearch.toLowerCase())
+        : true,
+    )
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   const displayedVolunteers = volunteers.filter((v) => {
     if (volunteerPaperOnly && !v.is_non_technical) return false;
@@ -2277,7 +2328,7 @@ export default function AdminDashboard() {
                           {formatDateTime(a.completed_at)}
                         </p>
                       )}
-                      <div className="mt-2">
+                      <div className="mt-2 flex gap-2 flex-wrap">
                         {a.status === "pending" ? (
                           <button
                             onClick={() => handleProxyLog(a)}
@@ -2293,6 +2344,20 @@ export default function AdminDashboard() {
                             Edit Log
                           </button>
                         )}
+                        {a.status === "pending" &&
+                          selectedWeek === activeCycleWeek && (
+                            <button
+                              onClick={() => {
+                                setMoveTarget(a);
+                                setMovePickedId("");
+                                setMoveSearch("");
+                                setShowMoveDropdown(false);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
+                            >
+                              Reassign
+                            </button>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -2330,21 +2395,37 @@ export default function AdminDashboard() {
                                 : "—"}
                             </td>
                             <td className="px-4 py-3">
-                              {a.status === "pending" ? (
-                                <button
-                                  onClick={() => handleProxyLog(a)}
-                                  className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
-                                >
-                                  Log Contact
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleProxyEdit(a)}
-                                  className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
-                                >
-                                  Edit Log
-                                </button>
-                              )}
+                              <div className="flex gap-2 flex-wrap">
+                                {a.status === "pending" ? (
+                                  <button
+                                    onClick={() => handleProxyLog(a)}
+                                    className="px-3 py-1.5 text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                                  >
+                                    Log Contact
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleProxyEdit(a)}
+                                    className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                                  >
+                                    Edit Log
+                                  </button>
+                                )}
+                                {a.status === "pending" &&
+                                  selectedWeek === activeCycleWeek && (
+                                    <button
+                                      onClick={() => {
+                                        setMoveTarget(a);
+                                        setMovePickedId("");
+                                        setMoveSearch("");
+                                        setShowMoveDropdown(false);
+                                      }}
+                                      className="px-3 py-1.5 text-xs font-medium text-stone-600 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors"
+                                    >
+                                      Reassign
+                                    </button>
+                                  )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -4212,6 +4293,86 @@ export default function AdminDashboard() {
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
                 >
                   {reassigning ? "Assigning..." : "Yes, assign to me"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Reassign single contact to any volunteer modal */}
+      {moveTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => !moving && setMoveTarget(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Reassign contact
+              </h2>
+              <p className="text-sm text-stone-500 mb-4">
+                Move{" "}
+                <span className="font-medium text-stone-700">
+                  {moveTarget.members?.first_name}{" "}
+                  {moveTarget.members?.last_name}
+                </span>{" "}
+                from{" "}
+                <span className="font-medium text-stone-700">
+                  {moveTarget.profiles?.full_name}
+                </span>{" "}
+                to:
+              </p>
+              <div className="relative mb-6">
+                <input
+                  type="text"
+                  value={moveSearch}
+                  onChange={(e) => {
+                    setMoveSearch(e.target.value);
+                    setMovePickedId("");
+                    setShowMoveDropdown(true);
+                  }}
+                  onFocus={() => setShowMoveDropdown(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowMoveDropdown(false), 150)
+                  }
+                  placeholder="Search volunteers..."
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+                />
+                {showMoveDropdown && filteredMoveOptions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {filteredMoveOptions.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setMovePickedId(v.id);
+                          setMoveSearch(v.full_name);
+                          setShowMoveDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 transition-colors font-medium text-stone-800"
+                      >
+                        {v.full_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMoveTarget(null)}
+                  disabled={moving}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmMoveAssignment}
+                  disabled={moving || !movePickedId}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
+                >
+                  {moving ? "Moving..." : "Reassign"}
                 </button>
               </div>
             </div>
