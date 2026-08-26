@@ -411,7 +411,7 @@ export default function AdminDashboard() {
     const { data: profileData } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at, gender_filter",
+        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at, gender_filter, contact_cap",
       )
       .in("role", ["volunteer", "admin"])
       .eq("is_active", true)
@@ -946,11 +946,17 @@ export default function AdminDashboard() {
   }
 
   async function updateGenderFilter(volunteerId, value) {
-    const prev =
-      volunteers.find((v) => v.id === volunteerId)?.gender_filter ?? null;
+    const target = volunteers.find((v) => v.id === volunteerId);
+    const prevGenderFilter = target?.gender_filter ?? null;
+    const prevContactCap = target?.contact_cap ?? null;
+    // Turning a gender filter on for a volunteer with no cap yet defaults
+    // them to 12 (the historical gender-filtered limit), still editable.
+    const defaultCap = value && prevContactCap == null ? 12 : prevContactCap;
     setVolunteers((prevVols) =>
       prevVols.map((v) =>
-        v.id === volunteerId ? { ...v, gender_filter: value } : v,
+        v.id === volunteerId
+          ? { ...v, gender_filter: value, contact_cap: defaultCap }
+          : v,
       ),
     );
     try {
@@ -965,17 +971,64 @@ export default function AdminDashboard() {
             Authorization: `Bearer ${token}`,
             Prefer: "return=minimal",
           },
-          body: JSON.stringify({ gender_filter: value }),
+          body: JSON.stringify({
+            gender_filter: value,
+            contact_cap: defaultCap,
+          }),
         },
       );
       if (!res.ok) throw new Error(await res.text());
     } catch {
       setVolunteers((prevVols) =>
         prevVols.map((v) =>
-          v.id === volunteerId ? { ...v, gender_filter: prev } : v,
+          v.id === volunteerId
+            ? {
+                ...v,
+                gender_filter: prevGenderFilter,
+                contact_cap: prevContactCap,
+              }
+            : v,
         ),
       );
       showToast("Failed to update contact filter. Please try again.", "error");
+    }
+  }
+
+  async function updateContactCap(volunteerId, rawValue) {
+    const value =
+      rawValue === "" || rawValue == null
+        ? null
+        : Math.max(1, Number(rawValue));
+    const prev =
+      volunteers.find((v) => v.id === volunteerId)?.contact_cap ?? null;
+    setVolunteers((prevVols) =>
+      prevVols.map((v) =>
+        v.id === volunteerId ? { ...v, contact_cap: value } : v,
+      ),
+    );
+    try {
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles?id=eq.${volunteerId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ contact_cap: value }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch {
+      setVolunteers((prevVols) =>
+        prevVols.map((v) =>
+          v.id === volunteerId ? { ...v, contact_cap: prev } : v,
+        ),
+      );
+      showToast("Failed to update contact cap. Please try again.", "error");
     }
   }
 
@@ -2826,7 +2879,7 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </div>
-                          <div className="mt-2">
+                          <div className="mt-2 flex items-center gap-2">
                             <select
                               value={v.gender_filter ?? ""}
                               onChange={(e) =>
@@ -2838,6 +2891,16 @@ export default function AdminDashboard() {
                               <option value="female">Women only</option>
                               <option value="male">Men only</option>
                             </select>
+                            <input
+                              type="number"
+                              min="1"
+                              value={v.contact_cap ?? ""}
+                              onChange={(e) =>
+                                updateContactCap(v.id, e.target.value)
+                              }
+                              placeholder="No cap"
+                              className="w-20 px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            />
                           </div>
                         </div>
                       );
@@ -2851,7 +2914,7 @@ export default function AdminDashboard() {
                         <TableHeader>
                           <Th>Name</Th>
                           <Th>Ministry</Th>
-                          <Th>Contacts</Th>
+                          <Th>Contact rules</Th>
                           <Th>Email</Th>
                           <Th>Assigned</Th>
                           <Th>Completed</Th>
@@ -2902,20 +2965,32 @@ export default function AdminDashboard() {
                                     : "—"}
                                 </td>
                                 <td className="px-4 py-3">
-                                  <select
-                                    value={v.gender_filter ?? ""}
-                                    onChange={(e) =>
-                                      updateGenderFilter(
-                                        v.id,
-                                        e.target.value || null,
-                                      )
-                                    }
-                                    className="px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                  >
-                                    <option value="">All genders</option>
-                                    <option value="female">Women only</option>
-                                    <option value="male">Men only</option>
-                                  </select>
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value={v.gender_filter ?? ""}
+                                      onChange={(e) =>
+                                        updateGenderFilter(
+                                          v.id,
+                                          e.target.value || null,
+                                        )
+                                      }
+                                      className="px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                    >
+                                      <option value="">All genders</option>
+                                      <option value="female">Women only</option>
+                                      <option value="male">Men only</option>
+                                    </select>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={v.contact_cap ?? ""}
+                                      onChange={(e) =>
+                                        updateContactCap(v.id, e.target.value)
+                                      }
+                                      placeholder="No cap"
+                                      className="w-20 px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                    />
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 text-stone-600">
                                   {v.is_non_technical ? (
