@@ -215,6 +215,8 @@ export default function AdminDashboard() {
   const [volunteerPaperOnly, setVolunteerPaperOnly] = useState(false);
   const [showInactiveVolunteers, setShowInactiveVolunteers] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState(null); // { id, name }
+  const [capDrafts, setCapDrafts] = useState({}); // { [volunteerId]: string } unsaved cap input
+  const [capTarget, setCapTarget] = useState(null); // { id, name, value } pending cap save
   const [reassignTarget, setReassignTarget] = useState(null); // { id, name, pending }
   const [reassigning, setReassigning] = useState(false);
   const [moveTarget, setMoveTarget] = useState(null); // assignment row being reassigned
@@ -1030,6 +1032,22 @@ export default function AdminDashboard() {
       );
       showToast("Failed to update contact cap. Please try again.", "error");
     }
+  }
+
+  function requestCapSave(id, name, value) {
+    setCapTarget({ id, name, value });
+  }
+
+  async function confirmCapSave() {
+    if (!capTarget) return;
+    const { id, value } = capTarget;
+    await updateContactCap(id, value);
+    setCapDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setCapTarget(null);
   }
 
   async function addVolunteer(e) {
@@ -2758,6 +2776,9 @@ export default function AdminDashboard() {
                         v.assigned > 0 && v.completed === 0;
                       const allDone =
                         v.completed === v.assigned && v.assigned > 0;
+                      const capSaved = String(v.contact_cap ?? "");
+                      const capDraft = capDrafts[v.id] ?? capSaved;
+                      const capDirty = capDraft !== capSaved;
                       return (
                         <div
                           key={v.id}
@@ -2894,13 +2915,26 @@ export default function AdminDashboard() {
                             <input
                               type="number"
                               min="1"
-                              value={v.contact_cap ?? ""}
+                              value={capDraft}
                               onChange={(e) =>
-                                updateContactCap(v.id, e.target.value)
+                                setCapDrafts((prev) => ({
+                                  ...prev,
+                                  [v.id]: e.target.value,
+                                }))
                               }
                               placeholder="No cap"
                               className="w-20 px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
                             />
+                            {capDirty && (
+                              <button
+                                onClick={() =>
+                                  requestCapSave(v.id, v.full_name, capDraft)
+                                }
+                                className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-medium rounded-lg transition-colors"
+                              >
+                                Save
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -2924,6 +2958,9 @@ export default function AdminDashboard() {
                           {displayedVolunteers.map((v) => {
                             const zeroCompletion =
                               v.assigned > 0 && v.completed === 0;
+                            const capSaved = String(v.contact_cap ?? "");
+                            const capDraft = capDrafts[v.id] ?? capSaved;
+                            const capDirty = capDraft !== capSaved;
                             return (
                               <tr
                                 key={v.id}
@@ -2983,13 +3020,30 @@ export default function AdminDashboard() {
                                     <input
                                       type="number"
                                       min="1"
-                                      value={v.contact_cap ?? ""}
+                                      value={capDraft}
                                       onChange={(e) =>
-                                        updateContactCap(v.id, e.target.value)
+                                        setCapDrafts((prev) => ({
+                                          ...prev,
+                                          [v.id]: e.target.value,
+                                        }))
                                       }
                                       placeholder="No cap"
                                       className="w-20 px-2 py-1 text-xs border border-stone-200 rounded-lg bg-white text-stone-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
                                     />
+                                    {capDirty && (
+                                      <button
+                                        onClick={() =>
+                                          requestCapSave(
+                                            v.id,
+                                            v.full_name,
+                                            capDraft,
+                                          )
+                                        }
+                                        className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-medium rounded-lg transition-colors"
+                                      >
+                                        Save
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-stone-600">
@@ -4353,6 +4407,57 @@ export default function AdminDashboard() {
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 rounded-xl transition-colors"
                 >
                   {savingNote ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Contact cap confirmation modal */}
+      {capTarget && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setCapTarget(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h2 className="text-base font-semibold text-stone-800 mb-2">
+                Update contact cap?
+              </h2>
+              <p className="text-sm text-stone-500 mb-6">
+                <span className="font-medium text-stone-700">
+                  {capTarget.name}
+                </span>{" "}
+                {capTarget.value === "" ? (
+                  <>
+                    will have no contact cap and can be assigned any number of
+                    members each 2-week cycle.
+                  </>
+                ) : (
+                  <>
+                    will be capped at{" "}
+                    <span className="font-medium text-stone-700">
+                      {capTarget.value}
+                    </span>{" "}
+                    contact{capTarget.value === "1" ? "" : "s"} per 2-week
+                    cycle.
+                  </>
+                )}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setCapTarget(null)}
+                  className="flex-1 py-2.5 text-sm font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCapSave}
+                  className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors"
+                >
+                  Save
                 </button>
               </div>
             </div>
