@@ -2894,6 +2894,18 @@ export default function AdminDashboard() {
                             >
                               {v.completed} completed
                             </span>
+                            {v.contact_cap != null && (
+                              <span
+                                className={`text-xs font-semibold ${
+                                  v.assigned - v.completed > v.contact_cap
+                                    ? "text-red-600"
+                                    : "text-stone-500"
+                                }`}
+                              >
+                                {v.assigned - v.completed} pending / cap{" "}
+                                {v.contact_cap}
+                              </span>
+                            )}
                             {zeroCompletion && (
                               <span className="text-xs text-red-500">
                                 · No contacts this week
@@ -3071,6 +3083,18 @@ export default function AdminDashboard() {
                                   >
                                     {v.completed}
                                   </span>
+                                  {v.contact_cap != null && (
+                                    <div
+                                      className={`text-xs font-semibold whitespace-nowrap ${
+                                        v.assigned - v.completed > v.contact_cap
+                                          ? "text-red-600"
+                                          : "text-stone-400"
+                                      }`}
+                                    >
+                                      {v.assigned - v.completed} pending / cap{" "}
+                                      {v.contact_cap}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex flex-col gap-1">
