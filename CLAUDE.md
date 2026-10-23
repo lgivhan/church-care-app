@@ -34,13 +34,13 @@ supabase functions serve   # Test Edge Functions locally
 ### Data Flow
 
 1. Planning Center (PCO) members sync daily via `syncMembersDaily` Edge Function → `members` table
-2. Every Sunday at 3am EST, `generateWeeklyAssignments` Edge Function calls the SQL function `generate_weekly_assignments()` (round-robin distribution) → `assignments` table
+2. Every Friday at 8am UTC (3am EST / 4am EDT), `generateWeeklyAssignments` Edge Function calls the SQL function `generate_weekly_assignments()` (round-robin distribution) → `assignments` table
 3. Volunteers complete contacts → `contact_logs` table (immutable, no DELETE policy)
 4. A trigger on `contact_logs` updates `members.last_contacted` automatically
 
 ### Key Scheduling
 
-`supabase/migrations/003_cron_jobs.sql` defines pg_cron jobs that invoke Edge Functions. The `week_starting` column (Sunday `YYYY-MM-DD`) is the anchor for all assignment lookups. Use `getThisSunday()` from `src/lib/utils.js` for consistent week calculation.
+`supabase/migrations/003_cron_jobs.sql` defines pg_cron jobs that invoke Edge Functions. The `week_starting` column (Friday `YYYY-MM-DD`) is the anchor for all assignment lookups — cycles are anchored to Friday, the same day distribution runs. Use `getThisFriday()` from `src/lib/utils.js` for consistent week calculation.
 
 ### Auth & Routing
 
