@@ -413,7 +413,7 @@ export default function AdminDashboard() {
     const { data: profileData } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at, gender_filter, contact_cap",
+        "id, full_name, email, role, is_active, is_non_technical, invite_pending, ministry, created_at, gender_filter, contact_cap, members_only",
       )
       .in("role", ["volunteer", "admin"])
       .eq("is_active", true)
@@ -990,6 +990,40 @@ export default function AdminDashboard() {
                 contact_cap: prevContactCap,
               }
             : v,
+        ),
+      );
+      showToast("Failed to update contact filter. Please try again.", "error");
+    }
+  }
+
+  async function updateMembersOnly(volunteerId, value) {
+    const prev =
+      volunteers.find((v) => v.id === volunteerId)?.members_only ?? false;
+    setVolunteers((prevVols) =>
+      prevVols.map((v) =>
+        v.id === volunteerId ? { ...v, members_only: value } : v,
+      ),
+    );
+    try {
+      const token = getAccessToken() ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/profiles?id=eq.${volunteerId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ members_only: value }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch {
+      setVolunteers((prevVols) =>
+        prevVols.map((v) =>
+          v.id === volunteerId ? { ...v, members_only: prev } : v,
         ),
       );
       showToast("Failed to update contact filter. Please try again.", "error");
@@ -2948,6 +2982,17 @@ export default function AdminDashboard() {
                               </button>
                             )}
                           </div>
+                          <label className="mt-2 flex items-center gap-1.5 text-xs text-stone-600">
+                            <input
+                              type="checkbox"
+                              checked={v.members_only ?? false}
+                              onChange={(e) =>
+                                updateMembersOnly(v.id, e.target.checked)
+                              }
+                              className="rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                            />
+                            Members only
+                          </label>
                         </div>
                       );
                     })}
@@ -3057,6 +3102,20 @@ export default function AdminDashboard() {
                                       </button>
                                     )}
                                   </div>
+                                  <label className="mt-1.5 flex items-center gap-1.5 text-xs text-stone-600">
+                                    <input
+                                      type="checkbox"
+                                      checked={v.members_only ?? false}
+                                      onChange={(e) =>
+                                        updateMembersOnly(
+                                          v.id,
+                                          e.target.checked,
+                                        )
+                                      }
+                                      className="rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                                    />
+                                    Members only
+                                  </label>
                                 </td>
                                 <td className="px-4 py-3 text-stone-600">
                                   {v.is_non_technical ? (
