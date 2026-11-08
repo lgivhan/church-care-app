@@ -20,6 +20,7 @@ import {
   sortAssignments,
   getDaysLeftInCycle,
   getMembershipLabel,
+  isSelfMember,
 } from "../lib/utils";
 import MemberCard from "./MemberCard";
 import ContactModal from "./ContactModal";
@@ -778,8 +779,13 @@ export default function AdminDashboard() {
           ? `Moved ${count} contact${count !== 1 ? "s" : ""} from ${name} to your list.`
           : `${name} has no pending contacts this cycle.`,
       );
-    } catch {
-      showToast("Failed to reassign contacts. Please try again.", "error");
+    } catch (err) {
+      showToast(
+        err?.code === "23514"
+          ? `One of ${name}'s contacts is you, and you can't be assigned to yourself. Move that contact to someone else first.`
+          : "Failed to reassign contacts. Please try again.",
+        "error",
+      );
     } finally {
       setReassigning(false);
     }
@@ -1647,6 +1653,7 @@ export default function AdminDashboard() {
 
   const filteredMoveOptions = volunteers
     .filter((v) => v.is_active && v.id !== moveTarget?.caller_id)
+    .filter((v) => !isSelfMember(v, moveTarget?.members))
     .filter((v) =>
       moveSearch.trim()
         ? v.full_name.toLowerCase().includes(moveSearch.toLowerCase())

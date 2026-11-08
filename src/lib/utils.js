@@ -102,3 +102,16 @@ export function getMembershipLabel(membershipType) {
   // Fallback — show a shortened version of whatever PCO has
   return { label: membershipType, color: "bg-gray-100 text-gray-600" };
 }
+
+// Mirrors is_self_member() in supabase/migrations/041_harden_no_self_assignment.sql:
+// a volunteer "is" a member if their emails match (case/whitespace-insensitive)
+// or their full names match. Keep the two in sync.
+export function isSelfMember(volunteer, member) {
+  if (!volunteer || !member) return false;
+  const norm = (s) => (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  const volEmail = norm(volunteer.email);
+  if (volEmail && volEmail === norm(member.email)) return true;
+  const volName = norm(volunteer.full_name);
+  const memberName = norm(`${member.first_name ?? ""} ${member.last_name ?? ""}`);
+  return !!volName && volName === memberName;
+}
